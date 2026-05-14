@@ -1,0 +1,50 @@
+﻿@page "/stocks/details"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Просмотр</PageTitle>
+
+<h1>Просмотр</h1>
+
+<div>
+    <h2>Запас</h2>
+    <hr />
+    @if (stock is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Товар</dt>
+            <dd class="col-sm-10">@stock.Product_Id</dd>
+            <dt class="col-sm-2">Размер</dt>
+            <dd class="col-sm-10">@stock.Size_Id</dd>
+            <dt class="col-sm-2">Количество на складе</dt>
+            <dd class="col-sm-10">@stock.Stock_Quantity</dd>
+        </dl>
+        <div>
+            <a href="@($"/stocks/edit?stock_id={stock.Stock_Id}")">Вернуться к списку</a> |
+            <a href="@($"/stocks")">Вернуться к списку</a>
+        </div>
+    }
+</div>
+
+@code {
+    private Stock? stock;
+
+    [SupplyParameterFromQuery]
+    private int Stock_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        stock = await context.Stocks.FirstOrDefaultAsync(m => m.Stock_Id == Stock_Id);
+
+        if (stock is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

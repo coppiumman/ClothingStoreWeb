@@ -1,0 +1,75 @@
+﻿@page "/products/delete"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Удаление</PageTitle>
+
+<h1>Удаление</h1>
+
+<p>Вы уверены, что хотите удалить этот элемент?</p>
+<div>
+    <h2>Товар</h2>
+    <hr />
+    @if (product is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Категория</dt>
+            <dd class="col-sm-10">@product.Category_Id</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Название товара</dt>
+            <dd class="col-sm-10">@product.Product_Name</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Описание товара</dt>
+            <dd class="col-sm-10">@product.Product_Description</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Цена</dt>
+            <dd class="col-sm-10">@product.Product_Price</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Цвет</dt>
+            <dd class="col-sm-10">@product.Product_Coloring</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Путь к изображению</dt>
+            <dd class="col-sm-10">@product.Product_ImagePath</dd>
+        </dl>
+        <EditForm method="post" Model="product" OnValidSubmit="DeleteProduct" FormName="delete" Enhance>
+            <button type="submit" class="btn btn-danger" disabled="@(product is null)">Удалить</button> |
+            <a href="/products">Вернуться к списку</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private Product? product;
+
+    [SupplyParameterFromQuery]
+    private int Product_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        product = await context.Products.FirstOrDefaultAsync(m => m.Product_Id == Product_Id);
+
+        if (product is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task DeleteProduct()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Products.Remove(product!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/products");
+    }
+}

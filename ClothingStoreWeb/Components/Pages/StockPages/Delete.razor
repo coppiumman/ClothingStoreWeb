@@ -1,0 +1,63 @@
+﻿@page "/stocks/delete"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Удаление</PageTitle>
+
+<h1>Удаление</h1>
+
+<p>Вы уверены, что хотите удалить этот элемент?</p>
+<div>
+    <h2>Запас</h2>
+    <hr />
+    @if (stock is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Товар</dt>
+            <dd class="col-sm-10">@stock.Product_Id</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Размер</dt>
+            <dd class="col-sm-10">@stock.Size_Id</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Количество на складе</dt>
+            <dd class="col-sm-10">@stock.Stock_Quantity</dd>
+        </dl>
+        <EditForm method="post" Model="stock" OnValidSubmit="DeleteStock" FormName="delete" Enhance>
+            <button type="submit" class="btn btn-danger" disabled="@(stock is null)">Удалить</button> |
+            <a href="/stocks">Вернуться к списку</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private Stock? stock;
+
+    [SupplyParameterFromQuery]
+    private int Stock_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        stock = await context.Stocks.FirstOrDefaultAsync(m => m.Stock_Id == Stock_Id);
+
+        if (stock is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task DeleteStock()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Stocks.Remove(stock!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/stocks");
+    }
+}

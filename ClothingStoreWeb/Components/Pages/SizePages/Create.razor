@@ -1,0 +1,47 @@
+﻿@page "/sizes/create"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Добавление</PageTitle>
+
+<h1>Добавление</h1>
+
+<h2>Размер</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Size" OnValidSubmit="AddSize" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="size_name" class="form-label">Размер:</label> 
+                <InputText id="size_name" @bind-Value="Size.Size_Name" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Size.Size_Name" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Добавить</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/sizes">Вернуться к списку</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Size Size { get; set; } = default!;
+
+    protected override void OnInitialized() => Size ??= new();
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddSize()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Sizes.Add(Size);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/sizes");
+    }
+}

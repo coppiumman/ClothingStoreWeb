@@ -1,0 +1,38 @@
+﻿@page "/stocks"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using ClothingStoreWeb.Models
+@using ClothingStoreWeb.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+
+<PageTitle>Запасы</PageTitle>
+
+<h1>Запасы</h1>
+
+<p>
+    <a href="stocks/create">Добавить</a>
+</p>
+
+<QuickGrid Class="table" Items="context.Stocks">
+    <PropertyColumn Property="stock => stock.Product_Id" Title="Товар" />
+    <PropertyColumn Property="stock => stock.Size_Id" Title="Размер" />
+    <PropertyColumn Property="stock => stock.Stock_Quantity" Title="Количество на складе" />
+
+    <TemplateColumn Context="stock">
+        <a href="@($"stocks/edit?stock_id={stock.Stock_Id}")">Изменить</a> |
+        <a href="@($"stocks/details?stock_id={stock.Stock_Id}")">Подробнее</a> |
+        <a href="@($"stocks/delete?stock_id={stock.Stock_Id}")">Удалить</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private ApplicationDbContext context = default!;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

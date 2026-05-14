@@ -1,0 +1,46 @@
+﻿@page "/sizes/details"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Просмотр</PageTitle>
+
+<h1>Просмотр</h1>
+
+<div>
+    <h2>Размер</h2>
+    <hr />
+    @if (size is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Размер</dt>
+            <dd class="col-sm-10">@size.Size_Name</dd>
+        </dl>
+        <div>
+            <a href="@($"/sizes/edit?size_id={size.Size_Id}")">Вернуться к списку</a> |
+            <a href="@($"/sizes")">Вернуться к списку</a>
+        </div>
+    }
+</div>
+
+@code {
+    private Size? size;
+
+    [SupplyParameterFromQuery]
+    private int Size_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        size = await context.Sizes.FirstOrDefaultAsync(m => m.Size_Id == Size_Id);
+
+        if (size is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

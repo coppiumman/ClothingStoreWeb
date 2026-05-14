@@ -1,0 +1,59 @@
+﻿@page "/categories/delete"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Удаление</PageTitle>
+
+<h1>Удаление</h1>
+
+<p>Вы уверены, что хотите удалить этот элемент?</p>
+<div>
+    <h2>Категория</h2>
+    <hr />
+    @if (category is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Название категории</dt>
+            <dd class="col-sm-10">@category.Category_Name</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Описание категории</dt>
+            <dd class="col-sm-10">@category.Category_Description</dd>
+        </dl>
+        <EditForm method="post" Model="category" OnValidSubmit="DeleteCategory" FormName="delete" Enhance>
+            <button type="submit" class="btn btn-danger" disabled="@(category is null)">Удалить</button> |
+            <a href="/categories">Вернуться к списку</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private Category? category;
+
+    [SupplyParameterFromQuery]
+    private int Category_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        category = await context.Categories.FirstOrDefaultAsync(m => m.Category_Id == Category_Id);
+
+        if (category is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task DeleteCategory()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Categories.Remove(category!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/categories");
+    }
+}

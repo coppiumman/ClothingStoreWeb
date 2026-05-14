@@ -1,0 +1,41 @@
+﻿@page "/products"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using ClothingStoreWeb.Models
+@using ClothingStoreWeb.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+
+<PageTitle>Товары</PageTitle>
+
+<h1>Товары</h1>
+
+<p>
+    <a href="products/create">Добавить</a>
+</p>
+
+<QuickGrid Class="table" Items="context.Products">
+    <PropertyColumn Property="product => product.Category_Id" Title="Категория" />
+    <PropertyColumn Property="product => product.Product_Name" Title="Название товара" />
+    <PropertyColumn Property="product => product.Product_Description" Title="Описание товара" />
+    <PropertyColumn Property="product => product.Product_Price" Title="Цена" />
+    <PropertyColumn Property="product => product.Product_Coloring" Title="Цвет" />
+    <PropertyColumn Property="product => product.Product_ImagePath" Title="Путь к изображению" />
+
+    <TemplateColumn Context="product">
+        <a href="@($"products/edit?product_id={product.Product_Id}")">Изменить</a> |
+        <a href="@($"products/details?product_id={product.Product_Id}")">Подробнее</a> |
+        <a href="@($"products/delete?product_id={product.Product_Id}")">Удалить</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private ApplicationDbContext context = default!;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

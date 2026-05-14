@@ -1,0 +1,67 @@
+﻿@page "/orders/delete"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Удаление</PageTitle>
+
+<h1>Удаление</h1>
+
+<p>Вы уверены, что хотите удалить этот элемент?</p>
+<div>
+    <h2>Заказ</h2>
+    <hr />
+    @if (order is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Пользователь</dt>
+            <dd class="col-sm-10">@order.User_Id</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Дата заказа</dt>
+            <dd class="col-sm-10">@order.Order_Date</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Статус заказа</dt>
+            <dd class="col-sm-10">@order.Order_Status</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Сумма заказа</dt>
+            <dd class="col-sm-10">@order.Order_TotalAmount</dd>
+        </dl>
+        <EditForm method="post" Model="order" OnValidSubmit="DeleteOrder" FormName="delete" Enhance>
+            <button type="submit" class="btn btn-danger" disabled="@(order is null)">Удалить</button> |
+            <a href="/orders">Вернуться к списку</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private Order? order;
+
+    [SupplyParameterFromQuery]
+    private int Order_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        order = await context.Orders.FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
+
+        if (order is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task DeleteOrder()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Orders.Remove(order!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/orders");
+    }
+}

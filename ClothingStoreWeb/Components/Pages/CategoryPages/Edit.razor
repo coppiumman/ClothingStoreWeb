@@ -1,0 +1,93 @@
+﻿@page "/categories/edit"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Редактирование</PageTitle>
+
+<h1>Редактирование</h1>
+
+<h2>Категория</h2>
+<hr />
+@if (Category is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Category" OnValidSubmit="UpdateCategory" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="Category.Category_Id" value="@Category.Category_Id" />
+                <div class="mb-3">
+                <span class="text-danger">*</span>
+                    <label for="category_name" class="form-label">Название категории:</label>
+                    <InputText id="category_name" @bind-Value="Category.Category_Name" class="form-control" aria-required="true"/>
+                    <ValidationMessage For="() => Category.Category_Name" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="category_description" class="form-label">Описание категории:</label>
+                    <InputText id="category_description" @bind-Value="Category.Category_Description" class="form-control" />
+                    <ValidationMessage For="() => Category.Category_Description" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/categories">Вернуться к списку</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Category_Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private Category? Category { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Category ??= await context.Categories.FirstOrDefaultAsync(m => m.Category_Id == Category_Id);
+
+        if (Category is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task UpdateCategory()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Category!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!CategoryExists(Category!.Category_Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/categories");
+    }
+
+    private bool CategoryExists(int category_id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Categories.Any(e => e.Category_Id == category_id);
+    }
+}

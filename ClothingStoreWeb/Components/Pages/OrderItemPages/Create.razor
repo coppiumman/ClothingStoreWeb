@@ -1,0 +1,71 @@
+﻿@page "/orderitems/create"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Добавление</PageTitle>
+
+<h1>Добавление</h1>
+
+<h2>Позиция заказа</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="OrderItem" OnValidSubmit="AddOrderItem" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="order_id" class="form-label">Заказ:</label> 
+                <InputNumber id="order_id" @bind-Value="OrderItem.Order_Id" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => OrderItem.Order_Id" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="product_id" class="form-label">Товар:</label> 
+                <InputNumber id="product_id" @bind-Value="OrderItem.Product_Id" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => OrderItem.Product_Id" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="size_id" class="form-label">Размер:</label> 
+                <InputNumber id="size_id" @bind-Value="OrderItem.Size_Id" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => OrderItem.Size_Id" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="orderitem_quantity" class="form-label">Количество:</label> 
+                <InputNumber id="orderitem_quantity" @bind-Value="OrderItem.OrderItem_Quantity" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => OrderItem.OrderItem_Quantity" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="orderitem_price" class="form-label">Цена позиции:</label> 
+                <InputNumber id="orderitem_price" @bind-Value="OrderItem.OrderItem_Price" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => OrderItem.OrderItem_Price" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Добавить</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/orderitems">Вернуться к списку</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private OrderItem OrderItem { get; set; } = default!;
+
+    protected override void OnInitialized() => OrderItem ??= new();
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddOrderItem()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.OrderItems.Add(OrderItem);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/orderitems");
+    }
+}

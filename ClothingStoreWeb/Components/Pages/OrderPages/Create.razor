@@ -1,0 +1,65 @@
+﻿@page "/orders/create"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Добавление</PageTitle>
+
+<h1>Добавление</h1>
+
+<h2>Заказ</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Order" OnValidSubmit="AddOrder" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="user_id" class="form-label">Пользователь:</label> 
+                <InputText id="user_id" @bind-Value="Order.User_Id" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Order.User_Id" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="order_date" class="form-label">Дата заказа:</label> 
+                <InputDate id="order_date" @bind-Value="Order.Order_Date" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Order.Order_Date" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="order_status" class="form-label">Статус заказа:</label> 
+                <InputText id="order_status" @bind-Value="Order.Order_Status" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Order.Order_Status" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="order_totalamount" class="form-label">Сумма заказа:</label> 
+                <InputNumber id="order_totalamount" @bind-Value="Order.Order_TotalAmount" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Order.Order_TotalAmount" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Добавить</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/orders">Вернуться к списку</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Order Order { get; set; } = default!;
+
+    protected override void OnInitialized() => Order ??= new();
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddOrder()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Orders.Add(Order);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/orders");
+    }
+}

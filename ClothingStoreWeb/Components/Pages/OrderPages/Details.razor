@@ -1,0 +1,52 @@
+﻿@page "/orders/details"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Просмотр</PageTitle>
+
+<h1>Просмотр</h1>
+
+<div>
+    <h2>Заказ</h2>
+    <hr />
+    @if (order is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Пользователь</dt>
+            <dd class="col-sm-10">@order.User_Id</dd>
+            <dt class="col-sm-2">Дата заказа</dt>
+            <dd class="col-sm-10">@order.Order_Date</dd>
+            <dt class="col-sm-2">Статус заказа</dt>
+            <dd class="col-sm-10">@order.Order_Status</dd>
+            <dt class="col-sm-2">Сумма заказа</dt>
+            <dd class="col-sm-10">@order.Order_TotalAmount</dd>
+        </dl>
+        <div>
+            <a href="@($"/orders/edit?order_id={order.Order_Id}")">Вернуться к списку</a> |
+            <a href="@($"/orders")">Вернуться к списку</a>
+        </div>
+    }
+</div>
+
+@code {
+    private Order? order;
+
+    [SupplyParameterFromQuery]
+    private int Order_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        order = await context.Orders.FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
+
+        if (order is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

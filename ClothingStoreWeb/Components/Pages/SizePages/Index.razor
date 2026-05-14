@@ -1,0 +1,36 @@
+﻿@page "/sizes"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using ClothingStoreWeb.Models
+@using ClothingStoreWeb.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+
+<PageTitle>Размеры</PageTitle>
+
+<h1>Размеры</h1>
+
+<p>
+    <a href="sizes/create">Добавить</a>
+</p>
+
+<QuickGrid Class="table" Items="context.Sizes">
+    <PropertyColumn Property="size => size.Size_Name" Title="Размер" />
+
+    <TemplateColumn Context="size">
+        <a href="@($"sizes/edit?size_id={size.Size_Id}")">Изменить</a> |
+        <a href="@($"sizes/details?size_id={size.Size_Id}")">Подробнее</a> |
+        <a href="@($"sizes/delete?size_id={size.Size_Id}")">Удалить</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private ApplicationDbContext context = default!;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

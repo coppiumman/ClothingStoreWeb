@@ -1,0 +1,59 @@
+﻿@page "/stocks/create"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Добавление</PageTitle>
+
+<h1>Добавление</h1>
+
+<h2>Запас</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Stock" OnValidSubmit="AddStock" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="product_id" class="form-label">Товар:</label> 
+                <InputNumber id="product_id" @bind-Value="Stock.Product_Id" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Stock.Product_Id" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="size_id" class="form-label">Размер:</label> 
+                <InputNumber id="size_id" @bind-Value="Stock.Size_Id" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Stock.Size_Id" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="stock_quantity" class="form-label">Количество на складе:</label> 
+                <InputNumber id="stock_quantity" @bind-Value="Stock.Stock_Quantity" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Stock.Stock_Quantity" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Добавить</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/stocks">Вернуться к списку</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Stock Stock { get; set; } = default!;
+
+    protected override void OnInitialized() => Stock ??= new();
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddStock()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Stocks.Add(Stock);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/stocks");
+    }
+}

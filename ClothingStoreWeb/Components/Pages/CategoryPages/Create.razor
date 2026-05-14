@@ -1,0 +1,51 @@
+﻿@page "/categories/create"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Добавление</PageTitle>
+
+<h1>Добавление</h1>
+
+<h2>Категория</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Category" OnValidSubmit="AddCategory" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="category_name" class="form-label">Название категории:</label> 
+                <InputText id="category_name" @bind-Value="Category.Category_Name" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Category.Category_Name" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="category_description" class="form-label">Описание категории:</label> 
+                <InputText id="category_description" @bind-Value="Category.Category_Description" class="form-control" /> 
+                <ValidationMessage For="() => Category.Category_Description" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Добавить</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/categories">Вернуться к списку</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Category Category { get; set; } = default!;
+
+    protected override void OnInitialized() => Category ??= new();
+
+    private async Task AddCategory()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Categories.Add(Category);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/categories");
+    }
+}

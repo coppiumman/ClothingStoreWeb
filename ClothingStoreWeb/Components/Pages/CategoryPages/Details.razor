@@ -1,0 +1,48 @@
+﻿@page "/categories/details"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Просмотр</PageTitle>
+
+<h1>Просмотр</h1>
+
+<div>
+    <h2>Категория</h2>
+    <hr />
+    @if (category is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Название категории</dt>
+            <dd class="col-sm-10">@category.Category_Name</dd>
+            <dt class="col-sm-2">Описание категории</dt>
+            <dd class="col-sm-10">@category.Category_Description</dd>
+        </dl>
+        <div>
+            <a href="@($"/categories/edit?category_id={category.Category_Id}")">Изменить</a> |
+            <a href="@($"/categories")">Вернуться к списку</a>
+        </div>
+    }
+</div>
+
+@code {
+    private Category? category;
+
+    [SupplyParameterFromQuery]
+    private int Category_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        category = await context.Categories.FirstOrDefaultAsync(m => m.Category_Id == Category_Id);
+
+        if (category is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

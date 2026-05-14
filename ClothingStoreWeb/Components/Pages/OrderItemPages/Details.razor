@@ -1,0 +1,54 @@
+﻿@page "/orderitems/details"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Просмотр</PageTitle>
+
+<h1>Просмотр</h1>
+
+<div>
+    <h2>Позиция заказа</h2>
+    <hr />
+    @if (orderitem is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Заказ</dt>
+            <dd class="col-sm-10">@orderitem.Order_Id</dd>
+            <dt class="col-sm-2">Товар</dt>
+            <dd class="col-sm-10">@orderitem.Product_Id</dd>
+            <dt class="col-sm-2">Размер</dt>
+            <dd class="col-sm-10">@orderitem.Size_Id</dd>
+            <dt class="col-sm-2">Количество</dt>
+            <dd class="col-sm-10">@orderitem.OrderItem_Quantity</dd>
+            <dt class="col-sm-2">Цена позиции</dt>
+            <dd class="col-sm-10">@orderitem.OrderItem_Price</dd>
+        </dl>
+        <div>
+            <a href="@($"/orderitems/edit?orderitem_id={orderitem.OrderItem_Id}")">Вернуться к списку</a> |
+            <a href="@($"/orderitems")">Вернуться к списку</a>
+        </div>
+    }
+</div>
+
+@code {
+    private OrderItem? orderitem;
+
+    [SupplyParameterFromQuery]
+    private int OrderItem_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        orderitem = await context.OrderItems.FirstOrDefaultAsync(m => m.OrderItem_Id == OrderItem_Id);
+
+        if (orderitem is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+}

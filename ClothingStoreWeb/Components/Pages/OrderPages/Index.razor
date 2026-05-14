@@ -1,0 +1,39 @@
+﻿@page "/orders"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using ClothingStoreWeb.Models
+@using ClothingStoreWeb.Data
+@implements IAsyncDisposable
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+
+<PageTitle>Заказы</PageTitle>
+
+<h1>Заказы</h1>
+
+<p>
+    <a href="orders/create">Добавить</a>
+</p>
+
+<QuickGrid Class="table" Items="context.Orders">
+    <PropertyColumn Property="order => order.User_Id" Title="Пользователь" />
+    <PropertyColumn Property="order => order.Order_Date" Title="Дата заказа" />
+    <PropertyColumn Property="order => order.Order_Status" Title="Статус заказа" />
+    <PropertyColumn Property="order => order.Order_TotalAmount" Title="Сумма заказа" />
+
+    <TemplateColumn Context="order">
+        <a href="@($"orders/edit?order_id={order.Order_Id}")">Изменить</a> |
+        <a href="@($"orders/details?order_id={order.Order_Id}")">Подробнее</a> |
+        <a href="@($"orders/delete?order_id={order.Order_Id}")">Удалить</a>
+    </TemplateColumn>
+</QuickGrid>
+
+@code {
+    private ApplicationDbContext context = default!;
+
+    protected override void OnInitialized()
+    {
+        context = DbFactory.CreateDbContext();
+    }
+
+    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+}

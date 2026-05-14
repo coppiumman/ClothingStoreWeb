@@ -1,0 +1,55 @@
+﻿@page "/sizes/delete"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Удаление</PageTitle>
+
+<h1>Удаление</h1>
+
+<p>Вы уверены, что хотите удалить этот элемент?</p>
+<div>
+    <h2>Размер</h2>
+    <hr />
+    @if (size is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else {
+        <dl class="row">
+            <dt class="col-sm-2">Размер</dt>
+            <dd class="col-sm-10">@size.Size_Name</dd>
+        </dl>
+        <EditForm method="post" Model="size" OnValidSubmit="DeleteSize" FormName="delete" Enhance>
+            <button type="submit" class="btn btn-danger" disabled="@(size is null)">Удалить</button> |
+            <a href="/sizes">Вернуться к списку</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private Size? size;
+
+    [SupplyParameterFromQuery]
+    private int Size_Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        size = await context.Sizes.FirstOrDefaultAsync(m => m.Size_Id == Size_Id);
+
+        if (size is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    private async Task DeleteSize()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Sizes.Remove(size!);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/sizes");
+    }
+}

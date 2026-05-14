@@ -1,0 +1,74 @@
+﻿@page "/products/create"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Добавление</PageTitle>
+
+<h1>Добавление</h1>
+
+<h2>Товар</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="Product" OnValidSubmit="AddProduct" FormName="create" Enhance>
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" role="alert"/>
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="category_id" class="form-label">Категория:</label> 
+                <InputNumber id="category_id" @bind-Value="Product.Category_Id" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Product.Category_Id" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="product_name" class="form-label">Название товара:</label> 
+                <InputText id="product_name" @bind-Value="Product.Product_Name" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Product.Product_Name" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="product_description" class="form-label">Описание товара:</label> 
+                <InputText id="product_description" @bind-Value="Product.Product_Description" class="form-control" /> 
+                <ValidationMessage For="() => Product.Product_Description" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <span class="text-danger">*</span>
+                <label for="product_price" class="form-label">Цена:</label> 
+                <InputNumber id="product_price" @bind-Value="Product.Product_Price" class="form-control" aria-required="true"/> 
+                <ValidationMessage For="() => Product.Product_Price" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="product_coloring" class="form-label">Цвет:</label> 
+                <InputText id="product_coloring" @bind-Value="Product.Product_Coloring" class="form-control" /> 
+                <ValidationMessage For="() => Product.Product_Coloring" class="text-danger" /> 
+            </div>        
+            <div class="mb-3">
+                <label for="product_imagepath" class="form-label">Путь к изображению:</label> 
+                <InputText id="product_imagepath" @bind-Value="Product.Product_ImagePath" class="form-control" /> 
+                <ValidationMessage For="() => Product.Product_ImagePath" class="text-danger" /> 
+            </div>        
+            <button type="submit" class="btn btn-primary">Добавить</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/products">Вернуться к списку</a>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private Product Product { get; set; } = default!;
+
+    protected override void OnInitialized() => Product ??= new();
+
+    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task AddProduct()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Products.Add(Product);
+        await context.SaveChangesAsync();
+        NavigationManager.NavigateTo("/products");
+    }
+}

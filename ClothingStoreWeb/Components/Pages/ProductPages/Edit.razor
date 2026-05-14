@@ -1,0 +1,117 @@
+﻿@page "/products/edit"
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Редактирование</PageTitle>
+
+<h1>Редактирование</h1>
+
+<h2>Товар</h2>
+<hr />
+@if (Product is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Product" OnValidSubmit="UpdateProduct" FormName="edit" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary role="alert"/>
+                <input type="hidden" name="Product.Product_Id" value="@Product.Product_Id" />
+                <div class="mb-3">
+                <span class="text-danger">*</span>
+                    <label for="category_id" class="form-label">Категория:</label>
+                    <InputNumber id="category_id" @bind-Value="Product.Category_Id" class="form-control" aria-required="true"/>
+                    <ValidationMessage For="() => Product.Category_Id" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                <span class="text-danger">*</span>
+                    <label for="product_name" class="form-label">Название товара:</label>
+                    <InputText id="product_name" @bind-Value="Product.Product_Name" class="form-control" aria-required="true"/>
+                    <ValidationMessage For="() => Product.Product_Name" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="product_description" class="form-label">Описание товара:</label>
+                    <InputText id="product_description" @bind-Value="Product.Product_Description" class="form-control" />
+                    <ValidationMessage For="() => Product.Product_Description" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                <span class="text-danger">*</span>
+                    <label for="product_price" class="form-label">Цена:</label>
+                    <InputNumber id="product_price" @bind-Value="Product.Product_Price" class="form-control" aria-required="true"/>
+                    <ValidationMessage For="() => Product.Product_Price" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="product_coloring" class="form-label">Цвет:</label>
+                    <InputText id="product_coloring" @bind-Value="Product.Product_Coloring" class="form-control" />
+                    <ValidationMessage For="() => Product.Product_Coloring" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="product_imagepath" class="form-label">Путь к изображению:</label>
+                    <InputText id="product_imagepath" @bind-Value="Product.Product_ImagePath" class="form-control" />
+                    <ValidationMessage For="() => Product.Product_ImagePath" class="text-danger" />
+                </div>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<div>
+    <a href="/products">Вернуться к списку</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    private int Product_Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private Product? Product { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+        Product ??= await context.Products.FirstOrDefaultAsync(m => m.Product_Id == Product_Id);
+
+        if (Product is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private async Task UpdateProduct()
+    {
+        using var context = DbFactory.CreateDbContext();
+        context.Attach(Product!).State = EntityState.Modified;
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!ProductExists(Product!.Product_Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+        }
+
+        NavigationManager.NavigateTo("/products");
+    }
+
+    private bool ProductExists(int product_id)
+    {
+        using var context = DbFactory.CreateDbContext();
+        return context.Products.Any(e => e.Product_Id == product_id);
+    }
+}
