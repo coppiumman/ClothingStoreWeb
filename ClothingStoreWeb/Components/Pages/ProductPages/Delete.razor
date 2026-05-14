@@ -16,10 +16,11 @@
     {
         <p><em>Загрузка...</em></p>
     }
-    else {
+    else
+    {
         <dl class="row">
             <dt class="col-sm-2">Категория</dt>
-            <dd class="col-sm-10">@product.Category_Id</dd>
+            <dd class="col-sm-10">@product.Category?.Category_Name</dd>
         </dl>
         <dl class="row">
             <dt class="col-sm-2">Название товара</dt>
@@ -57,7 +58,9 @@
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
-        product = await context.Products.FirstOrDefaultAsync(m => m.Product_Id == Product_Id);
+        product = await context.Products
+            .Include(p => p.Category)
+            .FirstOrDefaultAsync(m => m.Product_Id == Product_Id);
 
         if (product is null)
         {

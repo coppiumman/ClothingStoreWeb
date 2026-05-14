@@ -16,17 +16,27 @@
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert"/>
             <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="product_id" class="form-label">Товар:</label> 
-                <InputNumber id="product_id" @bind-Value="Stock.Product_Id" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Stock.Product_Id" class="text-danger" /> 
-            </div>        
+                <label for="product_id" class="form-label">Товар</label>
+                <InputSelect id="product_id" @bind-Value="Stock.Product_Id" class="form-control" aria-required="true">
+                    <option value="">Выберите товар</option>
+                    @foreach (var product in Products)
+                    {
+                        <option value="@product.Product_Id">@product.Product_Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Stock.Product_Id" class="text-danger" />
+            </div>
             <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="size_id" class="form-label">Размер:</label> 
-                <InputNumber id="size_id" @bind-Value="Stock.Size_Id" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Stock.Size_Id" class="text-danger" /> 
-            </div>        
+                <label for="size_id" class="form-label">Размер</label>
+                <InputSelect id="size_id" @bind-Value="Stock.Size_Id" class="form-control" aria-required="true">
+                    <option value="">Выберите размер</option>
+                    @foreach (var size in Sizes)
+                    {
+                        <option value="@size.Size_Id">@size.Size_Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Stock.Size_Id" class="text-danger" />
+            </div>
             <div class="mb-3">
                 <span class="text-danger">*</span>
                 <label for="stock_quantity" class="form-label">Количество на складе:</label> 
@@ -45,8 +55,17 @@
 @code {
     [SupplyParameterFromForm]
     private Stock Stock { get; set; } = default!;
+    private List<Product> Products { get; set; } = new();
+    private List<Size> Sizes { get; set; } = new();
 
-    protected override void OnInitialized() => Stock ??= new();
+    protected override async Task OnInitializedAsync()
+    {
+        Stock ??= new();
+
+        using var context = DbFactory.CreateDbContext();
+        Products = await context.Products.ToListAsync();
+        Sizes = await context.Sizes.ToListAsync();
+    }
 
     // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddStock()

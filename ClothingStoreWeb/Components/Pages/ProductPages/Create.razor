@@ -16,11 +16,16 @@
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert"/>
             <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="category_id" class="form-label">Категория:</label> 
-                <InputNumber id="category_id" @bind-Value="Product.Category_Id" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Product.Category_Id" class="text-danger" /> 
-            </div>        
+                <label for="category_id" class="form-label">Категория</label>
+                <InputSelect id="category_id" @bind-Value="Product.Category_Id" class="form-control" aria-required="true">
+                    <option value="">Выберите категорию</option>
+                    @foreach (var category in Categories)
+                    {
+                        <option value="@category.Category_Id">@category.Category_Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="() => Product.Category_Id" class="text-danger" />
+            </div>
             <div class="mb-3">
                 <span class="text-danger">*</span>
                 <label for="product_name" class="form-label">Название товара:</label> 
@@ -61,7 +66,15 @@
     [SupplyParameterFromForm]
     private Product Product { get; set; } = default!;
 
-    protected override void OnInitialized() => Product ??= new();
+    private List<Category> Categories { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Product ??= new();
+
+        using var context = DbFactory.CreateDbContext();
+        Categories = await context.Categories.ToListAsync();
+    }
 
     // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddProduct()

@@ -14,8 +14,10 @@
     <a href="products/create">Добавить</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Products">
-    <PropertyColumn Property="product => product.Category_Id" Title="Категория" />
+<QuickGrid Class="table" Items="context.Products.Include(p => p.Category)">
+    <TemplateColumn Title="Категория">
+        @context.Category?.Category_Name
+    </TemplateColumn>
     <PropertyColumn Property="product => product.Product_Name" Title="Название товара" />
     <PropertyColumn Property="product => product.Product_Description" Title="Описание товара" />
     <PropertyColumn Property="product => product.Product_Price" Title="Цена" />
