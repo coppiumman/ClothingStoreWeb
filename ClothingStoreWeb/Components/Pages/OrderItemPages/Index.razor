@@ -1,4 +1,4 @@
-﻿@page "/orderitems"
+@page "/orderitems"
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
@@ -14,10 +14,16 @@
     <a href="orderitems/create">Добавить</a>
 </p>
 
-<QuickGrid Class="table" Items="context.OrderItems">
-    <PropertyColumn Property="orderitem => orderitem.Order_Id" Title="Заказ" />
-    <PropertyColumn Property="orderitem => orderitem.Product_Id" Title="Товар" />
-    <PropertyColumn Property="orderitem => orderitem.Size_Id" Title="Размер" />
+<QuickGrid Class="table" Items="context.OrderItems.Include(oi => oi.Order).Include(oi => oi.Product).Include(oi => oi.Size)">
+    <TemplateColumn Title="Заказ">
+        @(context.Order is null ? $"Заказ №{context.Order_Id}" : GetOrderDisplayName(context.Order))
+    </TemplateColumn>
+    <TemplateColumn Title="Товар">
+        @(context.Product?.Product_Name ?? context.Product_Id.ToString())
+    </TemplateColumn>
+    <TemplateColumn Title="Размер">
+        @(context.Size?.Size_Name ?? context.Size_Id.ToString())
+    </TemplateColumn>
     <PropertyColumn Property="orderitem => orderitem.OrderItem_Quantity" Title="Количество" />
     <PropertyColumn Property="orderitem => orderitem.OrderItem_Price" Title="Цена позиции" />
 
@@ -37,4 +43,6 @@
     }
 
     public async ValueTask DisposeAsync() => await context.DisposeAsync();
+
+    private string GetOrderDisplayName(Order order) => $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy}";
 }

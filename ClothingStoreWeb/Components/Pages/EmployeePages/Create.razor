@@ -1,5 +1,6 @@
 ﻿@page "/employees/create"
 @using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
@@ -16,9 +17,14 @@
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert"/>
             <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="user_id" class="form-label">Пользователь:</label> 
-                <InputText id="user_id" @bind-Value="Employee.User_Id" class="form-control" aria-required="true"/> 
+                <label for="user_id" class="form-label">Пользователь</label>
+                <InputSelect id="user_id" @bind-Value="Employee.User_Id" class="form-control" aria-required="true">
+                    <option value="">Выберите пользователя</option>
+                    @foreach (var user in Users)
+                    {
+                        <option value="@user.Id">@GetUserDisplayName(user)</option>
+                    }
+                </InputSelect>
                 <ValidationMessage For="() => Employee.User_Id" class="text-danger" /> 
             </div>        
             <div class="mb-3">
@@ -52,7 +58,17 @@
     [SupplyParameterFromForm]
     private Employee Employee { get; set; } = default!;
 
-    protected override void OnInitialized() => Employee ??= new();
+    private List<ApplicationUser> Users { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Employee ??= new();
+
+        using var context = DbFactory.CreateDbContext();
+        Users = await context.Users.ToListAsync();
+    }
+
+    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
 
     // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddEmployee()

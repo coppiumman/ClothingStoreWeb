@@ -1,4 +1,4 @@
-﻿@page "/orders"
+@page "/orders"
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
@@ -14,8 +14,10 @@
     <a href="orders/create">Добавить</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Orders">
-    <PropertyColumn Property="order => order.User_Id" Title="Пользователь" />
+<QuickGrid Class="table" Items="context.Orders.Include(o => o.User)">
+    <TemplateColumn Title="Пользователь">
+        @(context.User is null ? context.User_Id : GetUserDisplayName(context.User))
+    </TemplateColumn>
     <PropertyColumn Property="order => order.Order_Date" Title="Дата заказа" />
     <PropertyColumn Property="order => order.Order_Status" Title="Статус заказа" />
     <PropertyColumn Property="order => order.Order_TotalAmount" Title="Сумма заказа" />
@@ -36,4 +38,6 @@
     }
 
     public async ValueTask DisposeAsync() => await context.DisposeAsync();
+
+    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
 }

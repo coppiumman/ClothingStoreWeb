@@ -1,4 +1,4 @@
-﻿@page "/orderitems/edit"
+@page "/orderitems/edit"
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
@@ -23,21 +23,36 @@ else
                 <ValidationSummary role="alert"/>
                 <input type="hidden" name="OrderItem.OrderItem_Id" value="@OrderItem.OrderItem_Id" />
                 <div class="mb-3">
-                <span class="text-danger">*</span>
-                    <label for="order_id" class="form-label">Заказ:</label>
-                    <InputNumber id="order_id" @bind-Value="OrderItem.Order_Id" class="form-control" aria-required="true"/>
+                    <label for="order_id" class="form-label">Заказ</label>
+                    <InputSelect id="order_id" @bind-Value="OrderItem.Order_Id" class="form-control" aria-required="true">
+                        <option value="">Выберите заказ</option>
+                        @foreach (var order in Orders)
+                        {
+                            <option value="@order.Order_Id">@GetOrderDisplayName(order)</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="() => OrderItem.Order_Id" class="text-danger" />
                 </div>
                 <div class="mb-3">
-                <span class="text-danger">*</span>
-                    <label for="product_id" class="form-label">Товар:</label>
-                    <InputNumber id="product_id" @bind-Value="OrderItem.Product_Id" class="form-control" aria-required="true"/>
+                    <label for="product_id" class="form-label">Товар</label>
+                    <InputSelect id="product_id" @bind-Value="OrderItem.Product_Id" class="form-control" aria-required="true">
+                        <option value="">Выберите товар</option>
+                        @foreach (var product in Products)
+                        {
+                            <option value="@product.Product_Id">@product.Product_Name</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="() => OrderItem.Product_Id" class="text-danger" />
                 </div>
                 <div class="mb-3">
-                <span class="text-danger">*</span>
-                    <label for="size_id" class="form-label">Размер:</label>
-                    <InputNumber id="size_id" @bind-Value="OrderItem.Size_Id" class="form-control" aria-required="true"/>
+                    <label for="size_id" class="form-label">Размер</label>
+                    <InputSelect id="size_id" @bind-Value="OrderItem.Size_Id" class="form-control" aria-required="true">
+                        <option value="">Выберите размер</option>
+                        @foreach (var size in Sizes)
+                        {
+                            <option value="@size.Size_Id">@size.Size_Name</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="() => OrderItem.Size_Id" class="text-danger" />
                 </div>
                 <div class="mb-3">
@@ -69,16 +84,25 @@ else
     [SupplyParameterFromForm]
     private OrderItem? OrderItem { get; set; }
 
+    private List<Order> Orders { get; set; } = new();
+    private List<Product> Products { get; set; } = new();
+    private List<Size> Sizes { get; set; } = new();
+
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
         OrderItem ??= await context.OrderItems.FirstOrDefaultAsync(m => m.OrderItem_Id == OrderItem_Id);
+        Orders = await context.Orders.ToListAsync();
+        Products = await context.Products.ToListAsync();
+        Sizes = await context.Sizes.ToListAsync();
 
         if (OrderItem is null)
         {
             NavigationManager.NavigateTo("notfound");
         }
     }
+
+    private string GetOrderDisplayName(Order order) => $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy}";
 
     // To protect from overposting attacks, enable the specific properties you want to bind to.
     // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.

@@ -1,4 +1,4 @@
-﻿@page "/employees"
+@page "/employees"
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
@@ -14,8 +14,10 @@
     <a href="employees/create">Добавить</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Employees">
-    <PropertyColumn Property="employee => employee.User_Id" Title="Пользователь" />
+<QuickGrid Class="table" Items="context.Employees.Include(e => e.User)">
+    <TemplateColumn Title="Пользователь">
+        @(context.User is null ? context.User_Id : GetUserDisplayName(context.User))
+    </TemplateColumn>
     <PropertyColumn Property="employee => employee.Employee_Position" Title="Должность" />
     <PropertyColumn Property="employee => employee.Employee_Salary" Title="Зарплата" />
     <PropertyColumn Property="employee => employee.Employee_HireDate" Title="Дата приёма на работу" />
@@ -36,4 +38,6 @@
     }
 
     public async ValueTask DisposeAsync() => await context.DisposeAsync();
+
+    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
 }

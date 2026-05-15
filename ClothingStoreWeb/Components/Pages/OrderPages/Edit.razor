@@ -1,5 +1,6 @@
-﻿@page "/orders/edit"
+@page "/orders/edit"
 @using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
@@ -23,9 +24,14 @@ else
                 <ValidationSummary role="alert"/>
                 <input type="hidden" name="Order.Order_Id" value="@Order.Order_Id" />
                 <div class="mb-3">
-                <span class="text-danger">*</span>
-                    <label for="user_id" class="form-label">Пользователь:</label>
-                    <InputText id="user_id" @bind-Value="Order.User_Id" class="form-control" aria-required="true"/>
+                    <label for="user_id" class="form-label">Пользователь</label>
+                    <InputSelect id="user_id" @bind-Value="Order.User_Id" class="form-control" aria-required="true">
+                        <option value="">Выберите пользователя</option>
+                        @foreach (var user in Users)
+                        {
+                            <option value="@user.Id">@GetUserDisplayName(user)</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="() => Order.User_Id" class="text-danger" />
                 </div>
                 <div class="mb-3">
@@ -63,16 +69,21 @@ else
     [SupplyParameterFromForm]
     private Order? Order { get; set; }
 
+    private List<ApplicationUser> Users { get; set; } = new();
+
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
         Order ??= await context.Orders.FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
+        Users = await context.Users.ToListAsync();
 
         if (Order is null)
         {
             NavigationManager.NavigateTo("notfound");
         }
     }
+
+    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
 
     // To protect from overposting attacks, enable the specific properties you want to bind to.
     // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.

@@ -1,5 +1,6 @@
 ﻿@page "/employees/delete"
 @using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
@@ -19,7 +20,7 @@
     else {
         <dl class="row">
             <dt class="col-sm-2">Пользователь</dt>
-            <dd class="col-sm-10">@employee.User_Id</dd>
+            <dd class="col-sm-10">@(employee.User is null ? employee.User_Id : GetUserDisplayName(employee.User))</dd>
         </dl>
         <dl class="row">
             <dt class="col-sm-2">Должность</dt>
@@ -49,13 +50,17 @@
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
-        employee = await context.Employees.FirstOrDefaultAsync(m => m.Employee_Id == Employee_Id);
+        employee = await context.Employees
+            .Include(e => e.User)
+            .FirstOrDefaultAsync(m => m.Employee_Id == Employee_Id);
 
         if (employee is null)
         {
             NavigationManager.NavigateTo("notfound");
         }
     }
+
+    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
 
     private async Task DeleteEmployee()
     {

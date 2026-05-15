@@ -1,5 +1,6 @@
-﻿@page "/orders/details"
+@page "/orders/details"
 @using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
@@ -18,7 +19,7 @@
     else {
         <dl class="row">
             <dt class="col-sm-2">Пользователь</dt>
-            <dd class="col-sm-10">@order.User_Id</dd>
+            <dd class="col-sm-10">@(order.User is null ? order.User_Id : GetUserDisplayName(order.User))</dd>
             <dt class="col-sm-2">Дата заказа</dt>
             <dd class="col-sm-10">@order.Order_Date</dd>
             <dt class="col-sm-2">Статус заказа</dt>
@@ -42,11 +43,15 @@
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
-        order = await context.Orders.FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
+        order = await context.Orders
+            .Include(o => o.User)
+            .FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
 
         if (order is null)
         {
             NavigationManager.NavigateTo("notfound");
         }
     }
+
+    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
 }
