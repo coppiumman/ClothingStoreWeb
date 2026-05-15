@@ -9,14 +9,19 @@
 <PageTitle>Запасы</PageTitle>
 
 <h1>Запасы</h1>
-
+    
 <p>
     <a href="stocks/create">Добавить</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Stocks">
-    <PropertyColumn Property="stock => stock.Product_Id" Title="Товар" />
-    <PropertyColumn Property="stock => stock.Size_Id" Title="Размер" />
+<QuickGrid Class="table" Items="context.Stocks.Include(s => s.Product).Include(s => s.Size)">
+    <TemplateColumn Title="Товар">
+        @context.Product?.Product_Name
+    </TemplateColumn>
+
+    <TemplateColumn Title="Размер">
+        @context.Size?.Size_Name
+    </TemplateColumn>
     <PropertyColumn Property="stock => stock.Stock_Quantity" Title="Количество на складе" />
 
     <TemplateColumn Context="stock">
