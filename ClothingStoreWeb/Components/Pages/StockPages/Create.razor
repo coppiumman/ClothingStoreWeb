@@ -1,7 +1,9 @@
-﻿@page "/stocks/create"
+@page "/stocks/create"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Добавление</PageTitle>
@@ -10,43 +12,50 @@
 
 <h2>Запас</h2>
 <hr />
-<div class="row">
-    <div class="col-md-4">
-        <EditForm method="post" Model="Stock" OnValidSubmit="AddStock" FormName="create" Enhance>
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert"/>
-            <div class="mb-3">
-                <label for="product_id" class="form-label">Товар</label>
-                <InputSelect id="product_id" @bind-Value="Stock.Product_Id" class="form-control" aria-required="true">
-                    <option value="">Выберите товар</option>
-                    @foreach (var product in Products)
-                    {
-                        <option value="@product.Product_Id">@product.Product_Name</option>
-                    }
-                </InputSelect>
-                <ValidationMessage For="() => Stock.Product_Id" class="text-danger" />
-            </div>
-            <div class="mb-3">
-                <label for="size_id" class="form-label">Размер</label>
-                <InputSelect id="size_id" @bind-Value="Stock.Size_Id" class="form-control" aria-required="true">
-                    <option value="">Выберите размер</option>
-                    @foreach (var size in Sizes)
-                    {
-                        <option value="@size.Size_Id">@size.Size_Name</option>
-                    }
-                </InputSelect>
-                <ValidationMessage For="() => Stock.Size_Id" class="text-danger" />
-            </div>
-            <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="stock_quantity" class="form-label">Количество на складе:</label> 
-                <InputNumber id="stock_quantity" @bind-Value="Stock.Stock_Quantity" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Stock.Stock_Quantity" class="text-danger" /> 
-            </div>        
-            <button type="submit" class="btn btn-primary">Добавить</button>
-        </EditForm>
+@if (Stock is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Stock" OnValidSubmit="AddStock" FormName="create" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert"/>
+                <div class="mb-3">
+                    <label for="product_id" class="form-label">Товар</label>
+                    <InputSelect id="product_id" @bind-Value="Stock.Product_Id" class="form-control" aria-required="true">
+                        <option value="0">Выберите товар</option>
+                        @foreach (var product in Products)
+                        {
+                            <option value="@product.Product_Id">@product.Product_Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Stock.Product_Id" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <label for="size_id" class="form-label">Размер</label>
+                    <InputSelect id="size_id" @bind-Value="Stock.Size_Id" class="form-control" aria-required="true">
+                        <option value="0">Выберите размер</option>
+                        @foreach (var size in Sizes)
+                        {
+                            <option value="@size.Size_Id">@size.Size_Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Stock.Size_Id" class="text-danger" />
+                </div>
+                <div class="mb-3">
+                    <span class="text-danger">*</span>
+                    <label for="stock_quantity" class="form-label">Количество на складе:</label> 
+                    <InputNumber id="stock_quantity" @bind-Value="Stock.Stock_Quantity" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректное количество на складе"/> 
+                    <ValidationMessage For="() => Stock.Stock_Quantity" class="text-danger" /> 
+                </div>        
+                <button type="submit" class="btn btn-primary">Добавить</button>
+            </EditForm>
+        </div>
     </div>
-</div>
+}
 
 <div>
     <a href="/stocks">Вернуться к списку</a>
@@ -60,6 +69,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanCreateAsync("Stocks"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         Stock ??= new();
 
         using var context = DbFactory.CreateDbContext();

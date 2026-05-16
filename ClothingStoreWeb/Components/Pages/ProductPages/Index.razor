@@ -1,20 +1,26 @@
-﻿@page "/products"
+@page "/products"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
 @using ClothingStoreWeb.Data
 @implements IAsyncDisposable
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Товары</PageTitle>
 
 <h1>Товары</h1>
 
-<p>
-    <a href="products/create">Добавить</a>
-</p>
+@if (canCreate)
+{
+    <p>
+        <a href="products/create">Добавить</a>
+    </p>
+}
 
-<QuickGrid Class="table" Items="context.Products.Include(p => p.Category)">
+<QuickGrid Class="table" Items="products">
     <TemplateColumn Title="Категория">
         @context.Category?.Category_Name
     </TemplateColumn>
@@ -25,19 +31,51 @@
     <PropertyColumn Property="product => product.Product_ImagePath" Title="Путь к изображению" />
 
     <TemplateColumn Context="product">
-        <a href="@($"products/edit?product_id={product.Product_Id}")">Изменить</a> |
-        <a href="@($"products/details?product_id={product.Product_Id}")">Подробнее</a> |
-        <a href="@($"products/delete?product_id={product.Product_Id}")">Удалить</a>
+        @if (canEdit)
+        {
+            <a href="@($"products/edit?product_id={product.Product_Id}")">Изменить</a>
+            <span> | </span>
+        }
+        <a href="@($"products/details?product_id={product.Product_Id}")">Подробнее</a>
+        @if (canDelete)
+        {
+            <span> | </span>
+            <a href="@($"products/delete?product_id={product.Product_Id}")">Удалить</a>
+        }
     </TemplateColumn>
 </QuickGrid>
 
 @code {
-    private ApplicationDbContext context = default!;
+    private ApplicationDbContext? context;
+    private IQueryable<Product> products = Enumerable.Empty<Product>().AsQueryable();
+    private bool canCreate;
+    private bool canEdit;
+    private bool canDelete;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanViewAsync("Products"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        canCreate = await AccessService.CanCreateAsync("Products");
+        canEdit = await AccessService.CanEditAsync("Products");
+        canDelete = await AccessService.CanDeleteAsync("Products");
+
         context = DbFactory.CreateDbContext();
+        products = context.Products
+            .Include(product => product.Category)
+            .AsNoTracking()
+            .OrderBy(product => product.Product_Id);
     }
 
-    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (context is not null)
+        {
+            await context.DisposeAsync();
+        }
+    }
 }

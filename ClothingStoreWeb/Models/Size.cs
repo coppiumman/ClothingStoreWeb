@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace ClothingStoreWeb.Models
 {
@@ -7,8 +7,9 @@ namespace ClothingStoreWeb.Models
         [Key]
         public int Size_Id { get; set; }
 
-        [Required]
-        [StringLength(20)]
+        [Display(Name = "Размер")]
+        [Required(ErrorMessage = "Введите размер")]
+        [StringLength(20, ErrorMessage = "Размер не должен превышать 20 символов")]
         public string Size_Name { get; set; } = string.Empty;
 
         public ICollection<Stock> Stocks { get; set; } = new List<Stock>();

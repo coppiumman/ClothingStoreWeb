@@ -1,0 +1,72 @@
+@page "/admin"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@inject EmployeeAccessService AccessService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Служебный раздел</PageTitle>
+
+<h1>Служебный раздел</h1>
+
+<ul>
+    @if (canViewCategories)
+    {
+        <li><a href="categories">Категории</a></li>
+    }
+    @if (canViewProducts)
+    {
+        <li><a href="products">Товары</a></li>
+    }
+    @if (canViewSizes)
+    {
+        <li><a href="sizes">Размеры</a></li>
+    }
+    @if (canViewStocks)
+    {
+        <li><a href="stocks">Запасы</a></li>
+    }
+    @if (canViewOrders)
+    {
+        <li><a href="orders">Заказы</a></li>
+    }
+    @if (canViewOrderItems)
+    {
+        <li><a href="orderitems">Элементы заказа</a></li>
+    }
+</ul>
+
+<AuthorizeView Roles="Администратор">
+    <Authorized>
+        <ul>
+            <li><a href="employees">Сотрудники</a></li>
+        </ul>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private bool canViewCategories;
+    private bool canViewProducts;
+    private bool canViewSizes;
+    private bool canViewStocks;
+    private bool canViewOrders;
+    private bool canViewOrderItems;
+
+    protected override async Task OnInitializedAsync()
+    {
+        canViewCategories = await AccessService.CanViewAsync("Categories");
+        canViewProducts = await AccessService.CanViewAsync("Products");
+        canViewSizes = await AccessService.CanViewAsync("Sizes");
+        canViewStocks = await AccessService.CanViewAsync("Stocks");
+        canViewOrders = await AccessService.CanViewAsync("Orders");
+        canViewOrderItems = await AccessService.CanViewAsync("OrderItems");
+
+        if (!canViewCategories
+            && !canViewProducts
+            && !canViewSizes
+            && !canViewStocks
+            && !canViewOrders
+            && !canViewOrderItems)
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+        }
+    }
+}

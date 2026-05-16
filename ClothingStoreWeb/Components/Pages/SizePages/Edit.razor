@@ -1,7 +1,9 @@
-﻿@page "/sizes/edit"
+@page "/sizes/edit"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Редактирование</PageTitle>
@@ -47,6 +49,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanEditAsync("Sizes"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
         Size ??= await context.Sizes.FirstOrDefaultAsync(m => m.Size_Id == Size_Id);
 

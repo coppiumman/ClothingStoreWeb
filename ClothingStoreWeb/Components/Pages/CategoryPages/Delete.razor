@@ -1,7 +1,9 @@
-﻿@page "/categories/delete"
+@page "/categories/delete"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Удаление</PageTitle>
@@ -40,6 +42,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanDeleteAsync("Categories"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
         category = await context.Categories.FirstOrDefaultAsync(m => m.Category_Id == Category_Id);
 

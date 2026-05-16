@@ -1,4 +1,5 @@
-﻿@page "/employees/edit"
+@page "/employees/edit"
+@attribute [Authorize(Roles = "Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
@@ -37,19 +38,25 @@ else
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="employee_position" class="form-label">Должность:</label>
-                    <InputText id="employee_position" @bind-Value="Employee.Employee_Position" class="form-control" aria-required="true"/>
+                    <InputSelect id="employee_position" @bind-Value="Employee.Employee_Position" class="form-control" aria-required="true">
+                        <option value="">Выберите должность</option>
+                        @foreach (var position in EmployeePositions)
+                        {
+                            <option value="@position">@position</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="() => Employee.Employee_Position" class="text-danger" />
                 </div>
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="employee_salary" class="form-label">Зарплата:</label>
-                    <InputNumber id="employee_salary" @bind-Value="Employee.Employee_Salary" class="form-control" aria-required="true"/>
+                    <InputNumber id="employee_salary" @bind-Value="Employee.Employee_Salary" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную зарплату"/>
                     <ValidationMessage For="() => Employee.Employee_Salary" class="text-danger" />
                 </div>
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="employee_hiredate" class="form-label">Дата приёма на работу:</label>
-                    <InputDate id="employee_hiredate" @bind-Value="Employee.Employee_HireDate" class="form-control" aria-required="true"/>
+                    <InputDate id="employee_hiredate" @bind-Value="Employee.Employee_HireDate" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную дату приёма на работу"/>
                     <ValidationMessage For="() => Employee.Employee_HireDate" class="text-danger" />
                 </div>
                 <button type="submit" class="btn btn-primary">Сохранить</button>
@@ -71,6 +78,14 @@ else
 
     private List<ApplicationUser> Users { get; set; } = new();
 
+    private static readonly string[] EmployeePositions =
+    {
+        "Администратор",
+        "Менеджер",
+        "Кладовщик",
+        "Консультант"
+    };
+
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
@@ -83,7 +98,19 @@ else
         }
     }
 
-    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
+    private static string GetUserDisplayName(ApplicationUser? user)
+    {
+        if (user is null)
+            return "";
+
+        if (!string.IsNullOrWhiteSpace(user.UserFullName))
+            return user.UserFullName;
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            return user.Email;
+
+        return user.Id;
+    }
 
     // To protect from overposting attacks, enable the specific properties you want to bind to.
     // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.

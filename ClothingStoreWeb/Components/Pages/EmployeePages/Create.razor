@@ -1,8 +1,11 @@
-﻿@page "/employees/create"
+@page "/employees/create"
+@attribute [Authorize(Roles = "Администратор")]
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager NavigationManager
 
 <PageTitle>Добавление</PageTitle>
@@ -11,44 +14,57 @@
 
 <h2>Сотрудник</h2>
 <hr />
-<div class="row">
-    <div class="col-md-4">
-        <EditForm method="post" Model="Employee" OnValidSubmit="AddEmployee" FormName="create" Enhance>
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert"/>
-            <div class="mb-3">
-                <label for="user_id" class="form-label">Пользователь</label>
-                <InputSelect id="user_id" @bind-Value="Employee.User_Id" class="form-control" aria-required="true">
-                    <option value="">Выберите пользователя</option>
-                    @foreach (var user in Users)
-                    {
-                        <option value="@user.Id">@GetUserDisplayName(user)</option>
-                    }
-                </InputSelect>
-                <ValidationMessage For="() => Employee.User_Id" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="employee_position" class="form-label">Должность:</label> 
-                <InputText id="employee_position" @bind-Value="Employee.Employee_Position" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Employee.Employee_Position" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="employee_salary" class="form-label">Зарплата:</label> 
-                <InputNumber id="employee_salary" @bind-Value="Employee.Employee_Salary" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Employee.Employee_Salary" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="employee_hiredate" class="form-label">Дата приёма на работу:</label> 
-                <InputDate id="employee_hiredate" @bind-Value="Employee.Employee_HireDate" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Employee.Employee_HireDate" class="text-danger" /> 
-            </div>        
-            <button type="submit" class="btn btn-primary">Добавить</button>
-        </EditForm>
+@if (Employee is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Employee" OnValidSubmit="AddEmployee" FormName="create" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert"/>
+                <div class="mb-3">
+                    <label for="user_id" class="form-label">Пользователь</label>
+                    <InputSelect id="user_id" @bind-Value="Employee.User_Id" class="form-control" aria-required="true">
+                        <option value="">Выберите пользователя</option>
+                        @foreach (var user in Users)
+                        {
+                            <option value="@user.Id">@GetUserDisplayName(user)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Employee.User_Id" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <span class="text-danger">*</span>
+                    <label for="employee_position" class="form-label">Должность:</label> 
+                    <InputSelect id="employee_position" @bind-Value="Employee.Employee_Position" class="form-control" aria-required="true">
+                        <option value="">Выберите должность</option>
+                        @foreach (var position in EmployeePositions)
+                        {
+                            <option value="@position">@position</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Employee.Employee_Position" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <span class="text-danger">*</span>
+                    <label for="employee_salary" class="form-label">Зарплата:</label> 
+                    <InputNumber id="employee_salary" @bind-Value="Employee.Employee_Salary" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную зарплату"/> 
+                    <ValidationMessage For="() => Employee.Employee_Salary" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <span class="text-danger">*</span>
+                    <label for="employee_hiredate" class="form-label">Дата приёма на работу:</label> 
+                    <InputDate id="employee_hiredate" @bind-Value="Employee.Employee_HireDate" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную дату приёма на работу"/> 
+                    <ValidationMessage For="() => Employee.Employee_HireDate" class="text-danger" /> 
+                </div>        
+                <button type="submit" class="btn btn-primary">Добавить</button>
+            </EditForm>
+        </div>
     </div>
-</div>
+}
 
 <div>
     <a href="/employees">Вернуться к списку</a>
@@ -60,6 +76,16 @@
 
     private List<ApplicationUser> Users { get; set; } = new();
 
+    private const string EmployeeRoleName = "Сотрудник";
+
+    private static readonly string[] EmployeePositions =
+    {
+        "Администратор",
+        "Менеджер",
+        "Кладовщик",
+        "Консультант"
+    };
+
     protected override async Task OnInitializedAsync()
     {
         Employee ??= new();
@@ -68,7 +94,19 @@
         Users = await context.Users.ToListAsync();
     }
 
-    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
+    private static string GetUserDisplayName(ApplicationUser? user)
+    {
+        if (user is null)
+            return "";
+
+        if (!string.IsNullOrWhiteSpace(user.UserFullName))
+            return user.UserFullName;
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            return user.Email;
+
+        return user.Id;
+    }
 
     // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddEmployee()
@@ -76,6 +114,13 @@
         using var context = DbFactory.CreateDbContext();
         context.Employees.Add(Employee);
         await context.SaveChangesAsync();
+
+        var user = await UserManager.FindByIdAsync(Employee.User_Id);
+        if (user is not null && !await UserManager.IsInRoleAsync(user, EmployeeRoleName))
+        {
+            await UserManager.AddToRoleAsync(user, EmployeeRoleName);
+        }
+
         NavigationManager.NavigateTo("/employees");
     }
 }

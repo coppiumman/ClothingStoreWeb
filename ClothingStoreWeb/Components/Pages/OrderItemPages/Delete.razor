@@ -1,7 +1,9 @@
 @page "/orderitems/delete"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Удаление</PageTitle>
@@ -52,6 +54,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanDeleteAsync("OrderItems"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
         orderitem = await context.OrderItems
             .Include(oi => oi.Order)

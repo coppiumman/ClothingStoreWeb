@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ClothingStoreWeb.Models
@@ -8,11 +8,13 @@ namespace ClothingStoreWeb.Models
         [Key]
         public int Category_Id { get; set; }
 
-        [Required]
-        [StringLength(100)]
+        [Display(Name = "Название категории")]
+        [Required(ErrorMessage = "Введите название категории")]
+        [StringLength(100, ErrorMessage = "Название категории не должно превышать 100 символов")]
         public string Category_Name { get; set; } = string.Empty;
 
-        [StringLength(500)]
+        [Display(Name = "Описание категории")]
+        [StringLength(500, ErrorMessage = "Описание категории не должно превышать 500 символов")]
         public string? Category_Description { get; set; }
 
         public ICollection<Product> Products { get; set; } = new List<Product>();

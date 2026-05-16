@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ClothingStoreWeb.Data;
 
@@ -9,17 +9,22 @@ namespace ClothingStoreWeb.Models
         [Key]
         public int Order_Id { get; set; }
 
-        [Required]
+        [Display(Name = "Пользователь")]
+        [Required(ErrorMessage = "Выберите пользователя")]
         public string User_Id { get; set; } = string.Empty;
 
-        [Required]
+        [Display(Name = "Дата заказа")]
+        [Required(ErrorMessage = "Укажите дату заказа")]
         public DateTime Order_Date { get; set; }
 
-        [Required]
+        [Display(Name = "Статус заказа")]
+        [Required(ErrorMessage = "Выберите статус заказа")]
         [StringLength(50)]
         public string Order_Status { get; set; } = string.Empty;
 
-        [Required]
+        [Display(Name = "Сумма заказа")]
+        [Required(ErrorMessage = "Введите сумму заказа")]
+        [Range(0, double.MaxValue, ErrorMessage = "Сумма заказа не может быть отрицательной")]
         [Column(TypeName = "decimal(18,2)")]
         public decimal Order_TotalAmount { get; set; }
 

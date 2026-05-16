@@ -1,8 +1,10 @@
 @page "/orders/delete"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Удаление</PageTitle>
@@ -20,7 +22,7 @@
     else {
         <dl class="row">
             <dt class="col-sm-2">Пользователь</dt>
-            <dd class="col-sm-10">@(order.User is null ? order.User_Id : GetUserDisplayName(order.User))</dd>
+            <dd class="col-sm-10">@GetUserDisplayName(order.User)</dd>
         </dl>
         <dl class="row">
             <dt class="col-sm-2">Дата заказа</dt>
@@ -28,7 +30,7 @@
         </dl>
         <dl class="row">
             <dt class="col-sm-2">Статус заказа</dt>
-            <dd class="col-sm-10">@order.Order_Status</dd>
+            <dd class="col-sm-10">@GetOrderStatusName(order.Order_Status)</dd>
         </dl>
         <dl class="row">
             <dt class="col-sm-2">Сумма заказа</dt>
@@ -49,6 +51,12 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanDeleteAsync("Orders"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
         order = await context.Orders
             .Include(o => o.User)
@@ -60,7 +68,36 @@
         }
     }
 
-    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
+    private static string GetUserDisplayName(ApplicationUser? user)
+    {
+        if (user is null)
+            return "";
+
+        if (!string.IsNullOrWhiteSpace(user.UserFullName))
+            return user.UserFullName;
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            return user.Email;
+
+        return user.Id;
+    }
+
+    private static string GetOrderStatusName(string? status)
+    {
+        return status switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "processing" => "В обработке",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => status ?? ""
+        };
+    }
 
     private async Task DeleteOrder()
     {

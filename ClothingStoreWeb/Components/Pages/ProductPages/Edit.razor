@@ -1,7 +1,9 @@
-﻿@page "/products/edit"
+@page "/products/edit"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Редактирование</PageTitle>
@@ -25,7 +27,7 @@ else
                 <div class="mb-3">
                     <label for="category_id" class="form-label">Категория</label>
                     <InputSelect id="category_id" @bind-Value="Product.Category_Id" class="form-control" aria-required="true">
-                        <option value="">Выберите категорию</option>
+                        <option value="0">Выберите категорию</option>
                         @foreach (var category in Categories)
                         {
                             <option value="@category.Category_Id">@category.Category_Name</option>
@@ -47,7 +49,7 @@ else
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="product_price" class="form-label">Цена:</label>
-                    <InputNumber id="product_price" @bind-Value="Product.Product_Price" class="form-control" aria-required="true"/>
+                    <InputNumber id="product_price" @bind-Value="Product.Product_Price" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную цену"/>
                     <ValidationMessage For="() => Product.Product_Price" class="text-danger" />
                 </div>
                 <div class="mb-3">
@@ -81,6 +83,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanEditAsync("Products"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
 
         Categories = await context.Categories.ToListAsync();

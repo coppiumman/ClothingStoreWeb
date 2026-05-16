@@ -1,7 +1,9 @@
-﻿@page "/sizes/details"
+@page "/sizes/details"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Просмотр</PageTitle>
@@ -21,7 +23,11 @@
             <dd class="col-sm-10">@size.Size_Name</dd>
         </dl>
         <div>
-            <a href="@($"/sizes/edit?size_id={size.Size_Id}")">Изменить</a> |
+            @if (canEdit)
+            {
+                <a href="@($"/sizes/edit?size_id={size.Size_Id}")">Изменить</a>
+                <span> | </span>
+            }
             <a href="@($"/sizes")">Вернуться к списку</a>
         </div>
     }
@@ -29,12 +35,21 @@
 
 @code {
     private Size? size;
+    private bool canEdit;
 
     [SupplyParameterFromQuery]
     private int Size_Id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanViewAsync("Sizes"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        canEdit = await AccessService.CanEditAsync("Sizes");
+
         using var context = DbFactory.CreateDbContext();
         size = await context.Sizes.FirstOrDefaultAsync(m => m.Size_Id == Size_Id);
 

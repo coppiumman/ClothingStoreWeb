@@ -1,7 +1,9 @@
-﻿@page "/categories/edit"
+@page "/categories/edit"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Редактирование</PageTitle>
@@ -52,6 +54,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanEditAsync("Categories"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
         Category ??= await context.Categories.FirstOrDefaultAsync(m => m.Category_Id == Category_Id);
 

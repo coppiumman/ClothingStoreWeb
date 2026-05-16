@@ -1,7 +1,9 @@
-﻿@page "/sizes/create"
+@page "/sizes/create"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Добавление</PageTitle>
@@ -10,21 +12,28 @@
 
 <h2>Размер</h2>
 <hr />
-<div class="row">
-    <div class="col-md-4">
-        <EditForm method="post" Model="Size" OnValidSubmit="AddSize" FormName="create" Enhance>
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert"/>
-            <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="size_name" class="form-label">Размер:</label> 
-                <InputText id="size_name" @bind-Value="Size.Size_Name" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Size.Size_Name" class="text-danger" /> 
-            </div>        
-            <button type="submit" class="btn btn-primary">Добавить</button>
-        </EditForm>
+@if (Size is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Size" OnValidSubmit="AddSize" FormName="create" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert"/>
+                <div class="mb-3">
+                    <span class="text-danger">*</span>
+                    <label for="size_name" class="form-label">Размер:</label> 
+                    <InputText id="size_name" @bind-Value="Size.Size_Name" class="form-control" aria-required="true"/> 
+                    <ValidationMessage For="() => Size.Size_Name" class="text-danger" /> 
+                </div>        
+                <button type="submit" class="btn btn-primary">Добавить</button>
+            </EditForm>
+        </div>
     </div>
-</div>
+}
 
 <div>
     <a href="/sizes">Вернуться к списку</a>
@@ -34,7 +43,16 @@
     [SupplyParameterFromForm]
     private Size Size { get; set; } = default!;
 
-    protected override void OnInitialized() => Size ??= new();
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AccessService.CanCreateAsync("Sizes"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        Size ??= new();
+    }
 
     // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddSize()

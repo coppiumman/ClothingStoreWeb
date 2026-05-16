@@ -1,7 +1,9 @@
-﻿@page "/products/details"
+@page "/products/details"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Просмотр</PageTitle>
@@ -31,7 +33,11 @@
             <dd class="col-sm-10">@product.Product_ImagePath</dd>
         </dl>
         <div>
-            <a href="@($"/products/edit?product_id={product.Product_Id}")">Изменить</a> |
+            @if (canEdit)
+            {
+                <a href="@($"/products/edit?product_id={product.Product_Id}")">Изменить</a>
+                <span> | </span>
+            }
             <a href="@($"/products")">Вернуться к списку</a>
         </div>
     }
@@ -39,12 +45,21 @@
 
 @code {
     private Product? product;
+    private bool canEdit;
 
     [SupplyParameterFromQuery]
     private int Product_Id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanViewAsync("Products"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        canEdit = await AccessService.CanEditAsync("Products");
+
         using var context = DbFactory.CreateDbContext();
         product = await context.Products
             .Include(p => p.Category)

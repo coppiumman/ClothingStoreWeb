@@ -1,4 +1,5 @@
 @page "/employees"
+@attribute [Authorize(Roles = "Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
@@ -14,9 +15,9 @@
     <a href="employees/create">Добавить</a>
 </p>
 
-<QuickGrid Class="table" Items="context.Employees.Include(e => e.User)">
+<QuickGrid Class="table" Items="employees">
     <TemplateColumn Title="Пользователь">
-        @(context.User is null ? context.User_Id : GetUserDisplayName(context.User))
+        @GetUserDisplayName(context.User)
     </TemplateColumn>
     <PropertyColumn Property="employee => employee.Employee_Position" Title="Должность" />
     <PropertyColumn Property="employee => employee.Employee_Salary" Title="Зарплата" />
@@ -31,13 +32,30 @@
 
 @code {
     private ApplicationDbContext context = default!;
+    private IQueryable<Employee> employees = Enumerable.Empty<Employee>().AsQueryable();
 
     protected override void OnInitialized()
     {
         context = DbFactory.CreateDbContext();
+        employees = context.Employees
+            .Include(employee => employee.User)
+            .AsNoTracking()
+            .OrderBy(employee => employee.Employee_Id);
     }
 
     public async ValueTask DisposeAsync() => await context.DisposeAsync();
 
-    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
+    private static string GetUserDisplayName(ApplicationUser? user)
+    {
+        if (user is null)
+            return "";
+
+        if (!string.IsNullOrWhiteSpace(user.UserFullName))
+            return user.UserFullName;
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            return user.Email;
+
+        return user.Id;
+    }
 }

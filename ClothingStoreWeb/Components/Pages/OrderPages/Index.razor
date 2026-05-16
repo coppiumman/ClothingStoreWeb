@@ -1,43 +1,112 @@
 @page "/orders"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
 @using ClothingStoreWeb.Data
 @implements IAsyncDisposable
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Заказы</PageTitle>
 
 <h1>Заказы</h1>
 
-<p>
-    <a href="orders/create">Добавить</a>
-</p>
+@if (canCreate)
+{
+    <p>
+        <a href="orders/create">Добавить</a>
+    </p>
+}
 
-<QuickGrid Class="table" Items="context.Orders.Include(o => o.User)">
+<QuickGrid Class="table" Items="orders">
     <TemplateColumn Title="Пользователь">
-        @(context.User is null ? context.User_Id : GetUserDisplayName(context.User))
+        @GetUserDisplayName(context.User)
     </TemplateColumn>
     <PropertyColumn Property="order => order.Order_Date" Title="Дата заказа" />
-    <PropertyColumn Property="order => order.Order_Status" Title="Статус заказа" />
+    <TemplateColumn Title="Статус заказа">
+        @GetOrderStatusName(context.Order_Status)
+    </TemplateColumn>
     <PropertyColumn Property="order => order.Order_TotalAmount" Title="Сумма заказа" />
 
     <TemplateColumn Context="order">
-        <a href="@($"orders/edit?order_id={order.Order_Id}")">Изменить</a> |
-        <a href="@($"orders/details?order_id={order.Order_Id}")">Подробнее</a> |
-        <a href="@($"orders/delete?order_id={order.Order_Id}")">Удалить</a>
+        @if (canEdit)
+        {
+            <a href="@($"orders/edit?order_id={order.Order_Id}")">Изменить</a>
+            <span> | </span>
+        }
+        <a href="@($"orders/details?order_id={order.Order_Id}")">Подробнее</a>
+        @if (canDelete)
+        {
+            <span> | </span>
+            <a href="@($"orders/delete?order_id={order.Order_Id}")">Удалить</a>
+        }
     </TemplateColumn>
 </QuickGrid>
 
 @code {
-    private ApplicationDbContext context = default!;
+    private ApplicationDbContext? context;
+    private IQueryable<Order> orders = Enumerable.Empty<Order>().AsQueryable();
+    private bool canCreate;
+    private bool canEdit;
+    private bool canDelete;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanViewAsync("Orders"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        canCreate = await AccessService.CanCreateAsync("Orders");
+        canEdit = await AccessService.CanEditAsync("Orders");
+        canDelete = await AccessService.CanDeleteAsync("Orders");
+
         context = DbFactory.CreateDbContext();
+        orders = context.Orders
+            .Include(order => order.User)
+            .AsNoTracking()
+            .OrderBy(order => order.Order_Id);
     }
 
-    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (context is not null)
+        {
+            await context.DisposeAsync();
+        }
+    }
 
-    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
+    private static string GetUserDisplayName(ApplicationUser? user)
+    {
+        if (user is null)
+            return "";
+
+        if (!string.IsNullOrWhiteSpace(user.UserFullName))
+            return user.UserFullName;
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            return user.Email;
+
+        return user.Id;
+    }
+
+    private static string GetOrderStatusName(string? status)
+    {
+        return status switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "processing" => "В обработке",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => status ?? ""
+        };
+    }
 }

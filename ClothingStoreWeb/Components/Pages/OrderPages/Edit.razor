@@ -1,8 +1,10 @@
 @page "/orders/edit"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Редактирование</PageTitle>
@@ -37,19 +39,25 @@ else
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="order_date" class="form-label">Дата заказа:</label>
-                    <InputDate id="order_date" @bind-Value="Order.Order_Date" class="form-control" aria-required="true"/>
+                    <InputDate id="order_date" @bind-Value="Order.Order_Date" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную дату заказа"/>
                     <ValidationMessage For="() => Order.Order_Date" class="text-danger" />
                 </div>
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="order_status" class="form-label">Статус заказа:</label>
-                    <InputText id="order_status" @bind-Value="Order.Order_Status" class="form-control" aria-required="true"/>
+                    <InputSelect id="order_status" @bind-Value="Order.Order_Status" class="form-control" aria-required="true">
+                        <option value="">Выберите статус</option>
+                        @foreach (var status in OrderStatuses)
+                        {
+                            <option value="@status.Value">@status.Name</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="() => Order.Order_Status" class="text-danger" />
                 </div>
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="order_totalamount" class="form-label">Сумма заказа:</label>
-                    <InputNumber id="order_totalamount" @bind-Value="Order.Order_TotalAmount" class="form-control" aria-required="true"/>
+                    <InputNumber id="order_totalamount" @bind-Value="Order.Order_TotalAmount" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную сумму заказа"/>
                     <ValidationMessage For="() => Order.Order_TotalAmount" class="text-danger" />
                 </div>
                 <button type="submit" class="btn btn-primary">Сохранить</button>
@@ -71,8 +79,27 @@ else
 
     private List<ApplicationUser> Users { get; set; } = new();
 
+    private static readonly (string Value, string Name)[] OrderStatuses =
+    {
+        ("new", "Новый"),
+        ("confirmed", "Подтверждён"),
+        ("paid", "Оплачен"),
+        ("processing", "В обработке"),
+        ("shipped", "Отправлен"),
+        ("delivered", "Доставлен"),
+        ("done", "Завершён"),
+        ("cancelled", "Отменён"),
+        ("returned", "Возврат")
+    };
+
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanEditAsync("Orders"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
         Order ??= await context.Orders.FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
         Users = await context.Users.ToListAsync();
@@ -83,7 +110,19 @@ else
         }
     }
 
-    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
+    private static string GetUserDisplayName(ApplicationUser? user)
+    {
+        if (user is null)
+            return "";
+
+        if (!string.IsNullOrWhiteSpace(user.UserFullName))
+            return user.UserFullName;
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            return user.Email;
+
+        return user.Id;
+    }
 
     // To protect from overposting attacks, enable the specific properties you want to bind to.
     // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.

@@ -1,8 +1,11 @@
-﻿@page "/employees/delete"
+@page "/employees/delete"
+@attribute [Authorize(Roles = "Администратор")]
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager NavigationManager
 
 <PageTitle>Удаление</PageTitle>
@@ -20,7 +23,7 @@
     else {
         <dl class="row">
             <dt class="col-sm-2">Пользователь</dt>
-            <dd class="col-sm-10">@(employee.User is null ? employee.User_Id : GetUserDisplayName(employee.User))</dd>
+            <dd class="col-sm-10">@GetUserDisplayName(employee.User)</dd>
         </dl>
         <dl class="row">
             <dt class="col-sm-2">Должность</dt>
@@ -44,6 +47,8 @@
 @code {
     private Employee? employee;
 
+    private const string EmployeeRoleName = "Сотрудник";
+
     [SupplyParameterFromQuery]
     private int Employee_Id { get; set; }
 
@@ -60,13 +65,32 @@
         }
     }
 
-    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
+    private static string GetUserDisplayName(ApplicationUser? user)
+    {
+        if (user is null)
+            return "";
+
+        if (!string.IsNullOrWhiteSpace(user.UserFullName))
+            return user.UserFullName;
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            return user.Email;
+
+        return user.Id;
+    }
 
     private async Task DeleteEmployee()
     {
         using var context = DbFactory.CreateDbContext();
         context.Employees.Remove(employee!);
         await context.SaveChangesAsync();
+
+        var user = await UserManager.FindByIdAsync(employee!.User_Id);
+        if (user is not null && await UserManager.IsInRoleAsync(user, EmployeeRoleName))
+        {
+            await UserManager.RemoveFromRoleAsync(user, EmployeeRoleName);
+        }
+
         NavigationManager.NavigateTo("/employees");
     }
 }

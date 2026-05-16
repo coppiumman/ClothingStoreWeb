@@ -1,7 +1,9 @@
-﻿@page "/stocks/edit"
+@page "/stocks/edit"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Редактирование</PageTitle>
@@ -26,7 +28,7 @@ else
                     <span class="text-danger">*</span>
                     <label for="product_id" class="form-label">Товар:</label>
                     <InputSelect id="product_id" @bind-Value="Stock.Product_Id" class="form-control" aria-required="true">
-                        <option value="">Выберите товар</option>
+                        <option value="0">Выберите товар</option>
                         @foreach (var product in Products)
                         {
                             <option value="@product.Product_Id">@product.Product_Name</option>
@@ -38,7 +40,7 @@ else
                     <span class="text-danger">*</span>
                     <label for="size_id" class="form-label">Размер:</label>
                     <InputSelect id="size_id" @bind-Value="Stock.Size_Id" class="form-control" aria-required="true">
-                        <option value="">Выберите размер</option>
+                        <option value="0">Выберите размер</option>
                         @foreach (var size in Sizes)
                         {
                             <option value="@size.Size_Id">@size.Size_Name</option>
@@ -49,7 +51,7 @@ else
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="stock_quantity" class="form-label">Количество на складе:</label>
-                    <InputNumber id="stock_quantity" @bind-Value="Stock.Stock_Quantity" class="form-control" aria-required="true"/>
+                    <InputNumber id="stock_quantity" @bind-Value="Stock.Stock_Quantity" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректное количество на складе"/>
                     <ValidationMessage For="() => Stock.Stock_Quantity" class="text-danger" />
                 </div>
                 <button type="submit" class="btn btn-primary">Сохранить</button>
@@ -73,6 +75,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanEditAsync("Stocks"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
 
         Products = await context.Products.ToListAsync();

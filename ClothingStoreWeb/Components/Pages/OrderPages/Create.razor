@@ -1,8 +1,10 @@
 @page "/orders/create"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Добавление</PageTitle>
@@ -11,44 +13,57 @@
 
 <h2>Заказ</h2>
 <hr />
-<div class="row">
-    <div class="col-md-4">
-        <EditForm method="post" Model="Order" OnValidSubmit="AddOrder" FormName="create" Enhance>
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert"/>
-            <div class="mb-3">
-                <label for="user_id" class="form-label">Пользователь</label>
-                <InputSelect id="user_id" @bind-Value="Order.User_Id" class="form-control" aria-required="true">
-                    <option value="">Выберите пользователя</option>
-                    @foreach (var user in Users)
-                    {
-                        <option value="@user.Id">@GetUserDisplayName(user)</option>
-                    }
-                </InputSelect>
-                <ValidationMessage For="() => Order.User_Id" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="order_date" class="form-label">Дата заказа:</label> 
-                <InputDate id="order_date" @bind-Value="Order.Order_Date" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Order.Order_Date" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="order_status" class="form-label">Статус заказа:</label> 
-                <InputText id="order_status" @bind-Value="Order.Order_Status" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Order.Order_Status" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="order_totalamount" class="form-label">Сумма заказа:</label> 
-                <InputNumber id="order_totalamount" @bind-Value="Order.Order_TotalAmount" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Order.Order_TotalAmount" class="text-danger" /> 
-            </div>        
-            <button type="submit" class="btn btn-primary">Добавить</button>
-        </EditForm>
+@if (Order is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Order" OnValidSubmit="AddOrder" FormName="create" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert"/>
+                <div class="mb-3">
+                    <label for="user_id" class="form-label">Пользователь</label>
+                    <InputSelect id="user_id" @bind-Value="Order.User_Id" class="form-control" aria-required="true">
+                        <option value="">Выберите пользователя</option>
+                        @foreach (var user in Users)
+                        {
+                            <option value="@user.Id">@GetUserDisplayName(user)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Order.User_Id" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <span class="text-danger">*</span>
+                    <label for="order_date" class="form-label">Дата заказа:</label> 
+                    <InputDate id="order_date" @bind-Value="Order.Order_Date" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную дату заказа"/> 
+                    <ValidationMessage For="() => Order.Order_Date" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <span class="text-danger">*</span>
+                    <label for="order_status" class="form-label">Статус заказа:</label> 
+                    <InputSelect id="order_status" @bind-Value="Order.Order_Status" class="form-control" aria-required="true">
+                        <option value="">Выберите статус</option>
+                        @foreach (var status in OrderStatuses)
+                        {
+                            <option value="@status.Value">@status.Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Order.Order_Status" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <span class="text-danger">*</span>
+                    <label for="order_totalamount" class="form-label">Сумма заказа:</label> 
+                    <InputNumber id="order_totalamount" @bind-Value="Order.Order_TotalAmount" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную сумму заказа"/> 
+                    <ValidationMessage For="() => Order.Order_TotalAmount" class="text-danger" /> 
+                </div>        
+                <button type="submit" class="btn btn-primary">Добавить</button>
+            </EditForm>
+        </div>
     </div>
-</div>
+}
 
 <div>
     <a href="/orders">Вернуться к списку</a>
@@ -60,15 +75,46 @@
 
     private List<ApplicationUser> Users { get; set; } = new();
 
+    private static readonly (string Value, string Name)[] OrderStatuses =
+    {
+        ("new", "Новый"),
+        ("confirmed", "Подтверждён"),
+        ("paid", "Оплачен"),
+        ("processing", "В обработке"),
+        ("shipped", "Отправлен"),
+        ("delivered", "Доставлен"),
+        ("done", "Завершён"),
+        ("cancelled", "Отменён"),
+        ("returned", "Возврат")
+    };
+
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanCreateAsync("Orders"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         Order ??= new();
 
         using var context = DbFactory.CreateDbContext();
         Users = await context.Users.ToListAsync();
     }
 
-    private string GetUserDisplayName(ApplicationUser user) => !string.IsNullOrWhiteSpace(user.UserFullName) ? user.UserFullName : user.Email ?? user.Id;
+    private static string GetUserDisplayName(ApplicationUser? user)
+    {
+        if (user is null)
+            return "";
+
+        if (!string.IsNullOrWhiteSpace(user.UserFullName))
+            return user.UserFullName;
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            return user.Email;
+
+        return user.Id;
+    }
 
     // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddOrder()

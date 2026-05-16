@@ -1,7 +1,9 @@
 @page "/orderitems/edit"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Редактирование</PageTitle>
@@ -25,7 +27,7 @@ else
                 <div class="mb-3">
                     <label for="order_id" class="form-label">Заказ</label>
                     <InputSelect id="order_id" @bind-Value="OrderItem.Order_Id" class="form-control" aria-required="true">
-                        <option value="">Выберите заказ</option>
+                        <option value="0">Выберите заказ</option>
                         @foreach (var order in Orders)
                         {
                             <option value="@order.Order_Id">@GetOrderDisplayName(order)</option>
@@ -36,7 +38,7 @@ else
                 <div class="mb-3">
                     <label for="product_id" class="form-label">Товар</label>
                     <InputSelect id="product_id" @bind-Value="OrderItem.Product_Id" class="form-control" aria-required="true">
-                        <option value="">Выберите товар</option>
+                        <option value="0">Выберите товар</option>
                         @foreach (var product in Products)
                         {
                             <option value="@product.Product_Id">@product.Product_Name</option>
@@ -47,7 +49,7 @@ else
                 <div class="mb-3">
                     <label for="size_id" class="form-label">Размер</label>
                     <InputSelect id="size_id" @bind-Value="OrderItem.Size_Id" class="form-control" aria-required="true">
-                        <option value="">Выберите размер</option>
+                        <option value="0">Выберите размер</option>
                         @foreach (var size in Sizes)
                         {
                             <option value="@size.Size_Id">@size.Size_Name</option>
@@ -58,13 +60,13 @@ else
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="orderitem_quantity" class="form-label">Количество:</label>
-                    <InputNumber id="orderitem_quantity" @bind-Value="OrderItem.OrderItem_Quantity" class="form-control" aria-required="true"/>
+                    <InputNumber id="orderitem_quantity" @bind-Value="OrderItem.OrderItem_Quantity" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректное количество"/>
                     <ValidationMessage For="() => OrderItem.OrderItem_Quantity" class="text-danger" />
                 </div>
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="orderitem_price" class="form-label">Цена позиции:</label>
-                    <InputNumber id="orderitem_price" @bind-Value="OrderItem.OrderItem_Price" class="form-control" aria-required="true"/>
+                    <InputNumber id="orderitem_price" @bind-Value="OrderItem.OrderItem_Price" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную цену позиции"/>
                     <ValidationMessage For="() => OrderItem.OrderItem_Price" class="text-danger" />
                 </div>
                 <button type="submit" class="btn btn-primary">Сохранить</button>
@@ -90,6 +92,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanEditAsync("OrderItems"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
         OrderItem ??= await context.OrderItems.FirstOrDefaultAsync(m => m.OrderItem_Id == OrderItem_Id);
         Orders = await context.Orders.ToListAsync();

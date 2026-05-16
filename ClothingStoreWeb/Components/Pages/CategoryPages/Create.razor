@@ -1,7 +1,9 @@
-﻿@page "/categories/create"
+@page "/categories/create"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Добавление</PageTitle>
@@ -10,26 +12,33 @@
 
 <h2>Категория</h2>
 <hr />
-<div class="row">
-    <div class="col-md-4">
-        <EditForm method="post" Model="Category" OnValidSubmit="AddCategory" FormName="create" Enhance>
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert"/>
-            <div class="mb-3">
-                <span class="text-danger">*</span>
-                <label for="category_name" class="form-label">Название категории:</label> 
-                <InputText id="category_name" @bind-Value="Category.Category_Name" class="form-control" aria-required="true"/> 
-                <ValidationMessage For="() => Category.Category_Name" class="text-danger" /> 
-            </div>        
-            <div class="mb-3">
-                <label for="category_description" class="form-label">Описание категории:</label> 
-                <InputText id="category_description" @bind-Value="Category.Category_Description" class="form-control" /> 
-                <ValidationMessage For="() => Category.Category_Description" class="text-danger" /> 
-            </div>        
-            <button type="submit" class="btn btn-primary">Добавить</button>
-        </EditForm>
+@if (Category is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <EditForm method="post" Model="Category" OnValidSubmit="AddCategory" FormName="create" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert"/>
+                <div class="mb-3">
+                    <span class="text-danger">*</span>
+                    <label for="category_name" class="form-label">Название категории:</label> 
+                    <InputText id="category_name" @bind-Value="Category.Category_Name" class="form-control" aria-required="true"/> 
+                    <ValidationMessage For="() => Category.Category_Name" class="text-danger" /> 
+                </div>        
+                <div class="mb-3">
+                    <label for="category_description" class="form-label">Описание категории:</label> 
+                    <InputText id="category_description" @bind-Value="Category.Category_Description" class="form-control" /> 
+                    <ValidationMessage For="() => Category.Category_Description" class="text-danger" /> 
+                </div>        
+                <button type="submit" class="btn btn-primary">Добавить</button>
+            </EditForm>
+        </div>
     </div>
-</div>
+}
 
 <div>
     <a href="/categories">Вернуться к списку</a>
@@ -39,7 +48,16 @@
     [SupplyParameterFromForm]
     private Category Category { get; set; } = default!;
 
-    protected override void OnInitialized() => Category ??= new();
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await AccessService.CanCreateAsync("Categories"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        Category ??= new();
+    }
 
     private async Task AddCategory()
     {

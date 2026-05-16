@@ -1,4 +1,4 @@
-﻿@implements IDisposable
+@implements IDisposable
 
 @inject NavigationManager NavigationManager
 
@@ -30,47 +30,55 @@
             </NavLink>
         </div>
         
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="categories">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Категории
-            </NavLink>
-        </div>
+        <AuthorizeView Roles="Сотрудник,Администратор">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="categories">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Категории
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="products">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Товары
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="products">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Товары
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="sizes">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Размеры
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="sizes">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Размеры
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="stocks">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Запасы
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="stocks">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Запасы
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="orders">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Заказы
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="orders">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Заказы
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="orderitems">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Элементы заказа
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="orderitems">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Элементы заказа
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="employees">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Сотрудники
-            </NavLink>
-        </div>
+        <AuthorizeView Roles="Администратор">
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="employees">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Сотрудники
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="auth">

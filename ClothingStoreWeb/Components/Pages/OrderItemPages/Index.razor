@@ -1,20 +1,26 @@
 @page "/orderitems"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
 @using ClothingStoreWeb.Data
 @implements IAsyncDisposable
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Позиции заказа</PageTitle>
 
 <h1>Позиции заказа</h1>
 
-<p>
-    <a href="orderitems/create">Добавить</a>
-</p>
+@if (canCreate)
+{
+    <p>
+        <a href="orderitems/create">Добавить</a>
+    </p>
+}
 
-<QuickGrid Class="table" Items="context.OrderItems.Include(oi => oi.Order).Include(oi => oi.Product).Include(oi => oi.Size)">
+<QuickGrid Class="table" Items="orderItems">
     <TemplateColumn Title="Заказ">
         @(context.Order is null ? $"Заказ №{context.Order_Id}" : GetOrderDisplayName(context.Order))
     </TemplateColumn>
@@ -28,21 +34,55 @@
     <PropertyColumn Property="orderitem => orderitem.OrderItem_Price" Title="Цена позиции" />
 
     <TemplateColumn Context="orderitem">
-        <a href="@($"orderitems/edit?orderitem_id={orderitem.OrderItem_Id}")">Изменить</a> |
-        <a href="@($"orderitems/details?orderitem_id={orderitem.OrderItem_Id}")">Подробнее</a> |
-        <a href="@($"orderitems/delete?orderitem_id={orderitem.OrderItem_Id}")">Удалить</a>
+        @if (canEdit)
+        {
+            <a href="@($"orderitems/edit?orderitem_id={orderitem.OrderItem_Id}")">Изменить</a>
+            <span> | </span>
+        }
+        <a href="@($"orderitems/details?orderitem_id={orderitem.OrderItem_Id}")">Подробнее</a>
+        @if (canDelete)
+        {
+            <span> | </span>
+            <a href="@($"orderitems/delete?orderitem_id={orderitem.OrderItem_Id}")">Удалить</a>
+        }
     </TemplateColumn>
 </QuickGrid>
 
 @code {
-    private ApplicationDbContext context = default!;
+    private ApplicationDbContext? context;
+    private IQueryable<OrderItem> orderItems = Enumerable.Empty<OrderItem>().AsQueryable();
+    private bool canCreate;
+    private bool canEdit;
+    private bool canDelete;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanViewAsync("OrderItems"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        canCreate = await AccessService.CanCreateAsync("OrderItems");
+        canEdit = await AccessService.CanEditAsync("OrderItems");
+        canDelete = await AccessService.CanDeleteAsync("OrderItems");
+
         context = DbFactory.CreateDbContext();
+        orderItems = context.OrderItems
+            .Include(orderItem => orderItem.Order)
+            .Include(orderItem => orderItem.Product)
+            .Include(orderItem => orderItem.Size)
+            .AsNoTracking()
+            .OrderBy(orderItem => orderItem.OrderItem_Id);
     }
 
-    public async ValueTask DisposeAsync() => await context.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (context is not null)
+        {
+            await context.DisposeAsync();
+        }
+    }
 
     private string GetOrderDisplayName(Order order) => $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy}";
 }

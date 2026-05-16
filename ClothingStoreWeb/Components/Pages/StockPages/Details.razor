@@ -1,7 +1,9 @@
-﻿@page "/stocks/details"
+@page "/stocks/details"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
 <PageTitle>Просмотр</PageTitle>
@@ -25,7 +27,11 @@
             <dd class="col-sm-10">@stock.Stock_Quantity</dd>
         </dl>
         <div>
-            <a href="@($"/stocks/edit?stock_id={stock.Stock_Id}")">Изменить</a> |
+            @if (canEdit)
+            {
+                <a href="@($"/stocks/edit?stock_id={stock.Stock_Id}")">Изменить</a>
+                <span> | </span>
+            }
             <a href="@($"/stocks")">Вернуться к списку</a>
         </div>
     }
@@ -33,12 +39,21 @@
 
 @code {
     private Stock? stock;
+    private bool canEdit;
 
     [SupplyParameterFromQuery]
     private int Stock_Id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        if (!await AccessService.CanViewAsync("Stocks"))
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        canEdit = await AccessService.CanEditAsync("Stocks");
+
         using var context = DbFactory.CreateDbContext();
         stock = await context.Stocks
         .Include(s => s.Product)
