@@ -1,0 +1,68 @@
+@inherits LayoutComponentBase
+@using ClothingStoreWeb.Services
+@inject CartService CartService
+@implements IDisposable
+
+<div class="public-page">
+    <header class="public-header">
+        <div class="public-logo">
+            <a href="/store">ClothingStoreWeb</a>
+        </div>
+
+        <nav class="public-nav">
+            <a href="/store">Главная</a>
+            <a href="/catalog">Каталог</a>
+            <a href="/cart">
+                Корзина
+                @if (CartService.GetTotalQuantity() > 0)
+                {
+                    <span class="cart-count">@CartService.GetTotalQuantity()</span>
+                }
+            </a>
+
+            <AuthorizeView Roles="Администратор,Сотрудник">
+                <Authorized>
+                    <a href="/admin">Служебный раздел</a>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView>
+                <Authorized>
+                    <a href="/profile">Личный кабинет</a>
+                </Authorized>
+
+                <NotAuthorized>
+                    <a href="/Account/Login">Вход</a>
+                    <a href="/Account/Register">Регистрация</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </nav>
+    </header>
+
+    <main class="public-main">
+        @Body
+    </main>
+</div>
+
+@code {
+    private bool cartLoaded;
+
+    protected override void OnInitialized()
+    {
+        CartService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !cartLoaded)
+        {
+            cartLoaded = true;
+            await CartService.LoadCartAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        CartService.OnChange -= StateHasChanged;
+    }
+}

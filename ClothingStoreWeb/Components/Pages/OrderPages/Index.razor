@@ -31,17 +31,21 @@
     <PropertyColumn Property="order => order.Order_TotalAmount" Title="Сумма заказа" />
 
     <TemplateColumn Context="order">
-        @if (canEdit)
-        {
-            <a href="@($"orders/edit?order_id={order.Order_Id}")">Изменить</a>
-            <span> | </span>
-        }
-        <a href="@($"orders/details?order_id={order.Order_Id}")">Подробнее</a>
-        @if (canDelete)
-        {
-            <span> | </span>
-            <a href="@($"orders/delete?order_id={order.Order_Id}")">Удалить</a>
-        }
+        <td class="table-actions">
+            <a href="@($"/orders/edit?id={order.Order_Id}")">Изменить</a>
+            <span>|</span>
+            <a href="@($"/orders/details?id={order.Order_Id}")">Подробнее</a>
+
+            @if (CanCancelOrder(order.Order_Status))
+            {
+                <span>|</span>
+                <a href="@($"/orders/delete?id={order.Order_Id}")">Отменить</a>
+            }
+            else
+            {
+                <span class="text-muted">Отмена недоступна</span>
+            }
+        </td>
     </TemplateColumn>
 </QuickGrid>
 
@@ -91,6 +95,14 @@
             return user.Email;
 
         return user.Id;
+    }
+
+    private static bool CanCancelOrder(string? status)
+    {
+        return status == "new" ||
+               status == "confirmed" ||
+               status == "paid" ||
+               status == "processing";
     }
 
     private static string GetOrderStatusName(string? status)

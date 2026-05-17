@@ -1,0 +1,8 @@
+.table-actions {
+    white-space: nowrap;
+}
+
+    .table-actions a,
+    .table-actions span {
+        margin-right: 6px;
+    }

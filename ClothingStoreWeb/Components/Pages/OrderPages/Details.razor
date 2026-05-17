@@ -44,7 +44,7 @@
     private Order? order;
     private bool canEdit;
 
-    [SupplyParameterFromQuery]
+    [SupplyParameterFromQuery(Name = "id")]
     private int Order_Id { get; set; }
 
     protected override async Task OnInitializedAsync()

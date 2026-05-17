@@ -45,7 +45,7 @@ else
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="order_status" class="form-label">Статус заказа:</label>
-                    <InputSelect id="order_status" @bind-Value="Order.Order_Status" class="form-control" aria-required="true">
+                    <InputSelect id="order_status" @bind-Value="Order.Order_Status" class="form-control" aria-required="true" disabled="@isFinalStatus">
                         <option value="">Выберите статус</option>
                         @foreach (var status in OrderStatuses)
                         {
@@ -53,6 +53,12 @@ else
                         }
                     </InputSelect>
                     <ValidationMessage For="() => Order.Order_Status" class="text-danger" />
+                    @if (isFinalStatus)
+                    {
+                        <div class="text-muted mt-1">
+                            Статус этого заказа является итоговым, его нельзя изменить.
+                        </div>
+                    }
                 </div>
                 <div class="mb-3">
                 <span class="text-danger">*</span>
@@ -60,6 +66,12 @@ else
                     <InputNumber id="order_totalamount" @bind-Value="Order.Order_TotalAmount" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную сумму заказа"/>
                     <ValidationMessage For="() => Order.Order_TotalAmount" class="text-danger" />
                 </div>
+                @if (!string.IsNullOrWhiteSpace(statusChangeError))
+                {
+                    <div class="alert alert-danger">
+                        @statusChangeError
+                    </div>
+                }
                 <button type="submit" class="btn btn-primary">Сохранить</button>
             </EditForm>
         </div>
@@ -71,13 +83,16 @@ else
 </div>
 
 @code {
-    [SupplyParameterFromQuery]
+    [SupplyParameterFromQuery(Name = "id")]
     private int Order_Id { get; set; }
 
     [SupplyParameterFromForm]
     private Order? Order { get; set; }
 
     private List<ApplicationUser> Users { get; set; } = new();
+
+    private string? statusChangeError;
+    private bool isFinalStatus;
 
     private static readonly (string Value, string Name)[] OrderStatuses =
     {
@@ -92,6 +107,28 @@ else
         ("returned", "Возврат")
     };
 
+    private static string NormalizeStatus(string? status)
+    {
+        return status switch
+        {
+            "Новый" => "new",
+            "Подтверждён" => "confirmed",
+            "Оплачен" => "paid",
+            "В обработке" => "processing",
+            "Отправлен" => "shipped",
+            "Доставлен" => "delivered",
+            "Завершён" => "done",
+            "Отменён" => "cancelled",
+            "Возврат" => "returned",
+            _ => status ?? ""
+        };
+    }
+
+    private static bool IsFinalStatus(string? status)
+    {
+        return status is "cancelled" or "shipped" or "delivered" or "done" or "returned";
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (!await AccessService.CanEditAsync("Orders"))
@@ -102,12 +139,22 @@ else
 
         using var context = DbFactory.CreateDbContext();
         Order ??= await context.Orders.FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
+
+        if (Order is not null)
+        {
+            Order.Order_Status = NormalizeStatus(Order.Order_Status);
+        }
+
+        Users = await context.Users.ToListAsync();
         Users = await context.Users.ToListAsync();
 
         if (Order is null)
         {
             NavigationManager.NavigateTo("notfound");
+            return;
         }
+
+        isFinalStatus = IsFinalStatus(Order.Order_Status);
     }
 
     private static string GetUserDisplayName(ApplicationUser? user)
@@ -128,8 +175,52 @@ else
     // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task UpdateOrder()
     {
+        if (Order is null)
+            return;
+
         using var context = DbFactory.CreateDbContext();
-        context.Attach(Order!).State = EntityState.Modified;
+
+        var orderFromDb = await context.Orders
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.Order_Id == Order.Order_Id);
+
+        if (orderFromDb is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        var oldStatus = NormalizeStatus(orderFromDb.Order_Status);
+        var newStatus = NormalizeStatus(Order.Order_Status);
+
+        if (IsFinalStatus(oldStatus) && oldStatus != newStatus)
+        {
+            statusChangeError = "Статус закрытого заказа нельзя изменить.";
+            Order.Order_Status = oldStatus;
+            isFinalStatus = true;
+            return;
+        }
+
+        if (oldStatus != "cancelled" && newStatus == "cancelled")
+        {
+            foreach (var orderItem in orderFromDb.OrderItems)
+            {
+                var stock = await context.Stocks
+                    .FirstOrDefaultAsync(s =>
+                        s.Product_Id == orderItem.Product_Id &&
+                        s.Size_Id == orderItem.Size_Id);
+
+                if (stock is not null)
+                {
+                    stock.Stock_Quantity += orderItem.OrderItem_Quantity;
+                }
+            }
+        }
+
+        orderFromDb.User_Id = Order.User_Id;
+        orderFromDb.Order_Date = Order.Order_Date;
+        orderFromDb.Order_Status = newStatus;
+        orderFromDb.Order_TotalAmount = Order.Order_TotalAmount;
 
         try
         {
@@ -137,14 +228,13 @@ else
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!OrderExists(Order!.Order_Id))
+            if (!OrderExists(Order.Order_Id))
             {
                 NavigationManager.NavigateTo("notfound");
+                return;
             }
-            else
-            {
-                throw;
-            }
+
+            throw;
         }
 
         NavigationManager.NavigateTo("/orders");

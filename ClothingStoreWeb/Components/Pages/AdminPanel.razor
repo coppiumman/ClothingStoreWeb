@@ -1,5 +1,6 @@
 @page "/admin"
-@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Администратор,Сотрудник")]
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
@@ -7,66 +8,30 @@
 
 <h1>Служебный раздел</h1>
 
+<p>
+    В этом разделе сотрудники и администратор выполняют управление данными интернет-магазина.
+</p>
+
+<h3>Основные возможности</h3>
+
 <ul>
-    @if (canViewCategories)
-    {
-        <li><a href="categories">Категории</a></li>
-    }
-    @if (canViewProducts)
-    {
-        <li><a href="products">Товары</a></li>
-    }
-    @if (canViewSizes)
-    {
-        <li><a href="sizes">Размеры</a></li>
-    }
-    @if (canViewStocks)
-    {
-        <li><a href="stocks">Запасы</a></li>
-    }
-    @if (canViewOrders)
-    {
-        <li><a href="orders">Заказы</a></li>
-    }
-    @if (canViewOrderItems)
-    {
-        <li><a href="orderitems">Элементы заказа</a></li>
-    }
+    <li><strong>Категории</strong> — управление разделами товаров.</li>
+    <li><strong>Товары</strong> — добавление, редактирование и просмотр товаров магазина.</li>
+    <li><strong>Размеры</strong> — настройка доступных размеров одежды.</li>
+    <li><strong>Запасы</strong> — учёт количества товаров по размерам.</li>
+    <li><strong>Заказы</strong> — просмотр и обработка заказов покупателей.</li>
+    <li><strong>Элементы заказа</strong> — просмотр состава заказов.</li>
 </ul>
 
-<AuthorizeView Roles="Администратор">
-    <Authorized>
-        <ul>
-            <li><a href="employees">Сотрудники</a></li>
-        </ul>
-    </Authorized>
-</AuthorizeView>
+<h3>Разграничение доступа</h3>
 
-@code {
-    private bool canViewCategories;
-    private bool canViewProducts;
-    private bool canViewSizes;
-    private bool canViewStocks;
-    private bool canViewOrders;
-    private bool canViewOrderItems;
+<ul>
+    <li><strong>Администратор</strong> имеет полный доступ ко всем разделам.</li>
+    <li><strong>Менеджер</strong> может управлять основными разделами, кроме сотрудников.</li>
+    <li><strong>Кладовщик</strong> может просматривать служебные разделы и редактировать товары, размеры и запасы.</li>
+    <li><strong>Консультант</strong> имеет доступ только к просмотру данных.</li>
+</ul>
 
-    protected override async Task OnInitializedAsync()
-    {
-        canViewCategories = await AccessService.CanViewAsync("Categories");
-        canViewProducts = await AccessService.CanViewAsync("Products");
-        canViewSizes = await AccessService.CanViewAsync("Sizes");
-        canViewStocks = await AccessService.CanViewAsync("Stocks");
-        canViewOrders = await AccessService.CanViewAsync("Orders");
-        canViewOrderItems = await AccessService.CanViewAsync("OrderItems");
-
-        if (!canViewCategories
-            && !canViewProducts
-            && !canViewSizes
-            && !canViewStocks
-            && !canViewOrders
-            && !canViewOrderItems)
-        {
-            NavigationManager.NavigateTo("/Account/AccessDenied");
-        }
-    }
-}
+<p>
+    Для перехода к нужному разделу используйте левую боковую панель.
+</p>

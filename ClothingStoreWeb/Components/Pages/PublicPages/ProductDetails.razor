@@ -1,0 +1,166 @@
+@page "/catalog/product/{ProductId:int}"
+@layout PublicLayout
+
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Data
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+@using ClothingStoreWeb.Services
+@inject CartService CartService
+
+<PageTitle>@(product?.Product_Name ?? "Товар")</PageTitle>
+
+@if (product is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="product-details">
+        <div class="product-details-image">
+            @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+            {
+                <img src="@product.Product_ImagePath" alt="@product.Product_Name" />
+            }
+            else
+            {
+                <div class="product-no-image">Нет изображения</div>
+            }
+        </div>
+
+        <div class="product-details-info">
+            <h1>@product.Product_Name</h1>
+
+            <p class="product-category">
+                Категория: @product.Category?.Category_Name
+            </p>
+
+            <p>
+                Цвет: @product.Product_Coloring
+            </p>
+
+            <p class="product-description">
+                @product.Product_Description
+            </p>
+
+            <p class="product-price">
+                @product.Product_Price.ToString("N2") ₽
+            </p>
+
+            <h3>Наличие по размерам</h3>
+
+            @if (stocks.Count == 0)
+            {
+                <p>Информация о наличии пока отсутствует.</p>
+            }
+            else
+            {
+                <table class="product-stock-table">
+                    <thead>
+                        <tr>
+                            <th>Размер</th>
+                            <th>Количество</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var stock in stocks)
+                        {
+                            <tr>
+                                <td>@stock.Size?.Size_Name</td>
+                                <td>@stock.Stock_Quantity</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <div class="product-size-select">
+                    <label for="sizeSelect">Выберите размер</label>
+
+                    <select id="sizeSelect" class="form-select" @bind="selectedStockId">
+                        <option value="">Выберите размер</option>
+
+                        @foreach (var stock in stocks)
+                        {
+                            <option value="@stock.Stock_Id">
+                                @stock.Size?.Size_Name — доступно: @stock.Stock_Quantity
+                            </option>
+                        }
+                    </select>
+                </div>
+            }
+
+            <div class="product-actions">
+                <button class="btn btn-primary"
+                        disabled="@(stocks.Count == 0 || selectedStockId is null)"
+                        @onclick="AddToCart">
+                    Добавить в корзину
+                </button>
+
+                <a href="/catalog">Вернуться в каталог</a>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int ProductId { get; set; }
+
+    private Product? product;
+    private List<Stock> stocks = new();
+    private int? selectedStockId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        product = await context.Products
+            .Include(product => product.Category)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(product => product.Product_Id == ProductId);
+
+        if (product is null)
+        {
+            NavigationManager.NavigateTo("/not-found");
+            return;
+        }
+
+        stocks = await context.Stocks
+            .Include(stock => stock.Size)
+            .AsNoTracking()
+            .Where(stock => stock.Product_Id == ProductId && stock.Stock_Quantity > 0)
+            .OrderBy(stock => stock.Size!.Size_Name)
+            .ToListAsync();
+    }
+
+    private async Task AddToCart()
+    {
+        if (product is null || selectedStockId is null)
+        {
+            return;
+        }
+
+        var selectedStock = stocks.FirstOrDefault(stock => stock.Stock_Id == selectedStockId.Value);
+
+        if (selectedStock is null || selectedStock.Size is null)
+        {
+            return;
+        }
+
+        await CartService.AddItemAsync(new CartItem
+        {
+            Product_Id = product.Product_Id,
+            Product_Name = product.Product_Name,
+            Product_Price = product.Product_Price,
+            Product_ImagePath = product.Product_ImagePath,
+            Size_Id = selectedStock.Size_Id,
+            Size_Name = selectedStock.Size.Size_Name,
+            Quantity = 1,
+            AvailableQuantity = selectedStock.Stock_Quantity
+        });
+
+        NavigationManager.NavigateTo("/cart");
+    }
+
+}

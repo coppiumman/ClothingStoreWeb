@@ -1,0 +1,188 @@
+@page "/checkout"
+@layout PublicLayout
+
+@using ClothingStoreWeb.Data
+@using ClothingStoreWeb.Models
+@using ClothingStoreWeb.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+
+@attribute [Authorize]
+
+@inject CartService CartService
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>Оформление заказа</PageTitle>
+
+<h1>Оформление заказа</h1>
+
+<p>
+    Проверьте состав заказа перед подтверждением.
+</p>
+
+@if (!CartService.Items.Any())
+{
+    <div class="checkout-empty">
+        <h3>Корзина пуста</h3>
+        <p>Для оформления заказа сначала добавьте товары в корзину.</p>
+
+        <a class="btn btn-primary" href="/catalog">
+            Перейти в каталог
+        </a>
+    </div>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">
+            @errorMessage
+        </div>
+    }
+
+    <table class="checkout-table">
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>Размер</th>
+                <th>Цена</th>
+                <th>Количество</th>
+                <th>Сумма</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var item in CartService.Items)
+            {
+                <tr>
+                    <td>@item.Product_Name</td>
+                    <td>@item.Size_Name</td>
+                    <td>@item.Product_Price.ToString("N2") ₽</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.TotalPrice.ToString("N2") ₽</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="checkout-summary">
+        <p>
+            <strong>Итого:</strong>
+            @CartService.GetTotalPrice().ToString("N2") ₽
+        </p>
+
+        <button class="btn btn-primary"
+                disabled="@isProcessing"
+                @onclick="CreateOrderAsync">
+            @(isProcessing ? "Оформление..." : "Подтвердить заказ")
+        </button>
+
+        <a class="btn btn-outline-secondary" href="/cart">
+            Вернуться в корзину
+        </a>
+    </div>
+
+@code {
+    private string? errorMessage;
+    private bool isProcessing;
+
+    private async Task CreateOrderAsync()
+    {
+        errorMessage = null;
+
+        if (!CartService.Items.Any())
+        {
+            errorMessage = "Корзина пуста.";
+            return;
+        }
+
+        isProcessing = true;
+
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                NavigationManager.NavigateTo("/Account/Login");
+                return;
+            }
+
+            await using var context = await DbFactory.CreateDbContextAsync();
+
+            foreach (var cartItem in CartService.Items)
+            {
+                var stock = await context.Stocks
+                    .FirstOrDefaultAsync(stock =>
+                        stock.Product_Id == cartItem.Product_Id &&
+                        stock.Size_Id == cartItem.Size_Id);
+
+                if (stock is null)
+                {
+                    errorMessage = $"Товар \"{cartItem.Product_Name}\" размера {cartItem.Size_Name} отсутствует на складе.";
+                    return;
+                }
+
+                if (stock.Stock_Quantity < cartItem.Quantity)
+                {
+                    errorMessage = $"Недостаточно товара \"{cartItem.Product_Name}\" размера {cartItem.Size_Name}. Доступно: {stock.Stock_Quantity}.";
+                    return;
+                }
+            }
+
+            var order = new Order
+            {
+                User_Id = userId,
+                Order_Date = DateTime.Now,
+                Order_Status = "new",
+                Order_TotalAmount = CartService.GetTotalPrice()
+            };
+
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+
+            foreach (var cartItem in CartService.Items)
+            {
+                var stock = await context.Stocks
+                    .FirstAsync(stock =>
+                        stock.Product_Id == cartItem.Product_Id &&
+                        stock.Size_Id == cartItem.Size_Id);
+
+                stock.Stock_Quantity -= cartItem.Quantity;
+
+                var orderItem = new OrderItem
+                {
+                    Order_Id = order.Order_Id,
+                    Product_Id = cartItem.Product_Id,
+                    Size_Id = cartItem.Size_Id,
+                    OrderItem_Quantity = cartItem.Quantity,
+                    OrderItem_Price = cartItem.Product_Price
+                };
+
+                context.OrderItems.Add(orderItem);
+            }
+
+            await context.SaveChangesAsync();
+
+            await CartService.ClearAsync();
+
+            NavigationManager.NavigateTo("/profile");
+        }
+        catch
+        {
+            errorMessage = "При оформлении заказа произошла ошибка. Попробуйте повторить позже.";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+    }
+
+}

@@ -7,11 +7,11 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Удаление</PageTitle>
+<PageTitle>Отмена заказа</PageTitle>
 
-<h1>Удаление</h1>
+<h1>Отмена заказа</h1>
 
-<p>Вы уверены, что хотите удалить этот элемент?</p>
+<p>Вы уверены, что хотите отменить этот заказ</p>
 <div>
     <h2>Заказ</h2>
     <hr />
@@ -36,8 +36,8 @@
             <dt class="col-sm-2">Сумма заказа</dt>
             <dd class="col-sm-10">@order.Order_TotalAmount</dd>
         </dl>
-        <EditForm method="post" Model="order" OnValidSubmit="DeleteOrder" FormName="delete" Enhance>
-            <button type="submit" class="btn btn-danger" disabled="@(order is null)">Удалить</button> |
+        <EditForm method="post" Model="order" OnValidSubmit="CancelOrder" FormName="cancel" Enhance>
+            <button type="submit" class="btn btn-danger">Отменить заказ</button>
             <a href="/orders">Вернуться к списку</a>
         </EditForm>
     }
@@ -46,7 +46,7 @@
 @code {
     private Order? order;
 
-    [SupplyParameterFromQuery]
+    [SupplyParameterFromQuery(Name = "id")]
     private int Order_Id { get; set; }
 
     protected override async Task OnInitializedAsync()
@@ -99,11 +99,46 @@
         };
     }
 
-    private async Task DeleteOrder()
+    private async Task CancelOrder()
     {
-        using var context = DbFactory.CreateDbContext();
-        context.Orders.Remove(order!);
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var order = await context.Orders
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.Order_Id == Order_Id);
+
+        if (order is null)
+        {
+            NavigationManager.NavigateTo("/not-found");
+            return;
+        }
+
+        if (order.Order_Status == "cancelled" ||
+            order.Order_Status == "done" ||
+            order.Order_Status == "shipped" ||
+            order.Order_Status == "delivered")
+        {
+            NavigationManager.NavigateTo("/orders");
+            return;
+        }
+
+        foreach (var orderItem in order.OrderItems)
+        {
+            var stock = await context.Stocks
+                .FirstOrDefaultAsync(s =>
+                    s.Product_Id == orderItem.Product_Id &&
+                    s.Size_Id == orderItem.Size_Id);
+
+            if (stock is not null)
+            {
+                stock.Stock_Quantity += orderItem.OrderItem_Quantity;
+            }
+        }
+
+        order.Order_Status = "cancelled";
+
         await context.SaveChangesAsync();
+
         NavigationManager.NavigateTo("/orders");
     }
 }

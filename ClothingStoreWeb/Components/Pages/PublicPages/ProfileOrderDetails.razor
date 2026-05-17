@@ -1,0 +1,136 @@
+@page "/profile/order"
+@layout PublicLayout
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ClothingStoreWeb.Data
+@using ClothingStoreWeb.Models
+@using Microsoft.EntityFrameworkCore
+
+@attribute [Authorize]
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+<PageTitle>Подробности заказа</PageTitle>
+
+<h1>Подробности заказа</h1>
+
+@if (order is null)
+{
+    <p><em>Загрузка...</em></p>
+}
+else
+{
+    <div class="order-details-card">
+        <h3>Заказ №@order.Order_Id</h3>
+
+        <p>
+            <strong>Дата заказа:</strong>
+            @order.Order_Date.ToString("dd.MM.yyyy HH:mm")
+        </p>
+
+        <p>
+            <strong>Статус:</strong>
+            @GetOrderStatusName(order.Order_Status)
+        </p>
+
+        <p>
+            <strong>Сумма заказа:</strong>
+            @order.Order_TotalAmount.ToString("N2") ₽
+        </p>
+    </div>
+
+    <div class="order-details-card">
+        <h3>Состав заказа</h3>
+
+        @if (!order.OrderItems.Any())
+        {
+            <p>В заказе нет позиций.</p>
+        }
+        else
+        {
+            <table class="order-items-table">
+                <thead>
+                    <tr>
+                        <th>Товар</th>
+                        <th>Размер</th>
+                        <th>Количество</th>
+                        <th>Цена</th>
+                        <th>Сумма</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in order.OrderItems)
+                    {
+                        <tr>
+                            <td>@item.Product?.Product_Name</td>
+                            <td>@item.Size?.Size_Name</td>
+                            <td>@item.OrderItem_Quantity</td>
+                            <td>@item.OrderItem_Price.ToString("N2") ₽</td>
+                            <td>@((item.OrderItem_Price * item.OrderItem_Quantity).ToString("N2")) ₽</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+<p>
+    <a href="/profile">Вернуться в личный кабинет</a>
+</p>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id")]
+    private int Order_Id { get; set; }
+
+    private Order? order;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            NavigationManager.NavigateTo("/Account/Login");
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        order = await context.Orders
+            .AsNoTracking()
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+            .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Size)
+            .FirstOrDefaultAsync(o => o.Order_Id == Order_Id && o.User_Id == userId);
+
+        if (order is null)
+        {
+            NavigationManager.NavigateTo("/profile");
+        }
+    }
+
+    private static string GetOrderStatusName(string? status)
+    {
+        return status switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "processing" => "В обработке",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => status ?? ""
+        };
+    }
+}

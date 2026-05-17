@@ -1,0 +1,138 @@
+@page "/profile"
+@layout PublicLayout
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using ClothingStoreWeb.Data
+@using ClothingStoreWeb.Models
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
+<PageTitle>Личный кабинет</PageTitle>
+
+<h1>Личный кабинет</h1>
+
+<p>
+    На этой странице пользователь сможет просматривать свои данные и историю заказов.
+</p>
+
+<div class="profile-card">
+    <h3>Данные пользователя</h3>
+
+    @if (userEmail is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <p>
+            <strong>Email:</strong> @userEmail
+        </p>
+    }
+
+    <form action="/Account/Logout" method="post" class="profile-logout-form">
+        <AntiforgeryToken />
+        <button type="submit" class="btn btn-outline-danger">
+            Выйти из аккаунта
+        </button>
+    </form>
+
+</div>
+
+<div class="profile-card">
+    <h3>История заказов</h3>
+
+    @if (!userOrders.Any())
+    {
+        <p>У вас пока нет оформленных заказов.</p>
+    }
+    else
+    {
+        <div class="orders-history-scroll">
+            <table class="profile-orders-table">
+                <thead>
+                    <tr>
+                        <th>Номер заказа</th>
+                        <th>Дата заказа</th>
+                        <th>Статус</th>
+                        <th>Сумма</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var order in userOrders)
+                    {
+                        <tr>
+                            <td>Заказ №@order.Order_Id</td>
+                            <td>@order.Order_Date.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@GetOrderStatusName(order.Order_Status)</td>
+                            <td>@order.Order_TotalAmount.ToString("N2") ₽</td>
+                            <td>
+                                <a href="@($"/profile/order?id={order.Order_Id}")">Подробнее</a>
+
+                                @if (CanUserCancelOrder(order.Order_Status))
+                                {
+                                    <span> | </span>
+                                    <a href="@($"/profile/order-cancel?id={order.Order_Id}")">Отменить</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private string? userEmail;
+    private List<Order> userOrders = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        userEmail = user.Identity?.Name;
+
+        var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        userOrders = await context.Orders
+            .AsNoTracking()
+            .Where(order => order.User_Id == userId)
+            .OrderByDescending(order => order.Order_Date)
+            .ToListAsync();
+    }
+
+    private static string GetOrderStatusName(string? status)
+    {
+        return status switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "processing" => "В обработке",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => status ?? ""
+        };
+    }
+
+    private static bool CanUserCancelOrder(string? status)
+    {
+        return status is "new" or "confirmed" or "paid";
+    }
+}
