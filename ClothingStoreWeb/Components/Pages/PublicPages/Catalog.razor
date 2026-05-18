@@ -24,30 +24,25 @@ else
         @foreach (var product in products)
         {
             <div class="catalog-card">
-                <div class="catalog-image">
-                    @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
-                    {
-                        <img src="@product.Product_ImagePath" alt="@product.Product_Name" />
-                    }
-                    else
-                    {
-                        <div class="catalog-no-image">Нет изображения</div>
-                    }
-                </div>
+                <a href="@($"/catalog/product/{product.Product_Id}")" class="catalog-image-link">
+                    <div class="catalog-image">
+                        @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+                        {
+                            <img src="@product.Product_ImagePath" alt="@product.Product_Name" />
+                        }
+                        else
+                        {
+                            <div class="catalog-no-image">Нет изображения</div>
+                        }
+                    </div>
+                </a>
 
                 <div class="catalog-card-body">
-                    <h3>@product.Product_Name</h3>
+                    <div class="catalog-name">@product.Product_Name</div>
 
-                    <p>Категория: @product.Category?.Category_Name</p>
-                    <p>Цвет: @product.Product_Coloring</p>
-
-                    <p class="catalog-price">
+                    <div class="catalog-price">
                         @product.Product_Price.ToString("N2") ₽
-                    </p>
-
-                    <a href="@($"/catalog/product/{product.Product_Id}")">
-                        Подробнее
-                    </a>
+                    </div>
                 </div>
             </div>
         }
@@ -64,7 +59,8 @@ else
         products = await context.Products
             .Include(product => product.Category)
             .AsNoTracking()
-            .OrderBy(product => product.Product_Name)
+            .OrderBy(product => product.Product_DisplayOrder)
+            .ThenBy(product => product.Product_Id)
             .ToListAsync();
     }
 }

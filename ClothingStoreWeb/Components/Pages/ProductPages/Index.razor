@@ -20,34 +20,102 @@
     </p>
 }
 
-<QuickGrid Class="table" Items="products">
+<div class="products-filter">
+    <label for="categoryFilter" class="form-label">Категория:</label>
+
+    <select id="categoryFilter"
+            class="form-select products-category-select"
+            @onchange="OnCategoryChanged">
+        <option value="">Все категории</option>
+
+        @foreach (var category in categories)
+        {
+            <option value="@category.Category_Id">
+                @category.Category_Name
+            </option>
+        }
+    </select>
+</div>
+
+@if (selectedCategoryId is null)
+{
+    <p class="text-muted products-order-hint">
+        Для изменения порядка товаров выберите конкретную категорию.
+    </p>
+}
+
+<div class="products-grid-wrapper">
+    <QuickGrid Class="table products-table" Items="products">
     <TemplateColumn Title="Категория">
         @context.Category?.Category_Name
     </TemplateColumn>
+
+    <TemplateColumn Title="Изображение" Context="product">
+        <div class="product-list-image-box">
+            @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+            {
+                <img src="@product.Product_ImagePath"
+                     alt="@product.Product_Name"
+                     class="product-list-image" />
+            }
+            else
+            {
+                <span class="text-muted">Нет изображения</span>
+            }
+        </div>
+    </TemplateColumn>
+
     <PropertyColumn Property="product => product.Product_Name" Title="Название товара" />
     <PropertyColumn Property="product => product.Product_Description" Title="Описание товара" />
     <PropertyColumn Property="product => product.Product_Price" Title="Цена" />
     <PropertyColumn Property="product => product.Product_Coloring" Title="Цвет" />
-    <PropertyColumn Property="product => product.Product_ImagePath" Title="Путь к изображению" />
+    <PropertyColumn Property="product => product.Product_DisplayOrder" Title="Порядок" />
+    
 
-    <TemplateColumn Context="product">
+    <TemplateColumn Title="Действия" Context="product">
         @if (canEdit)
         {
+                <span class="product-order-buttons"
+                      title="@(selectedCategoryId is null ? "Для изменения порядка выберите категорию" : null)">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            disabled="@(selectedCategoryId is null)"
+                            @onclick="() => MoveProductUp(product.Product_Id)">
+                        ↑
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            disabled="@(selectedCategoryId is null)"
+                            @onclick="() => MoveProductDown(product.Product_Id)">
+                        ↓
+                    </button>
+                </span>
+
+            <span> | </span>
+
             <a href="@($"products/edit?product_id={product.Product_Id}")">Изменить</a>
             <span> | </span>
         }
+
         <a href="@($"products/details?product_id={product.Product_Id}")">Подробнее</a>
+
         @if (canDelete)
         {
             <span> | </span>
             <a href="@($"products/delete?product_id={product.Product_Id}")">Удалить</a>
         }
     </TemplateColumn>
-</QuickGrid>
+    </QuickGrid>
+</div>
 
 @code {
     private ApplicationDbContext? context;
     private IQueryable<Product> products = Enumerable.Empty<Product>().AsQueryable();
+    private List<Category> categories = new();
+
+    private int? selectedCategoryId;
+
     private bool canCreate;
     private bool canEdit;
     private bool canDelete;
@@ -65,10 +133,144 @@
         canDelete = await AccessService.CanDeleteAsync("Products");
 
         context = DbFactory.CreateDbContext();
-        products = context.Products
+
+        categories = await context.Categories
+            .AsNoTracking()
+            .OrderBy(category => category.Category_Name)
+            .ToListAsync();
+
+        LoadProductsQuery();
+    }
+
+    private void LoadProductsQuery()
+    {
+        if (context is null)
+        {
+            products = Enumerable.Empty<Product>().AsQueryable();
+            return;
+        }
+
+        var query = context.Products
             .Include(product => product.Category)
             .AsNoTracking()
-            .OrderBy(product => product.Product_Id);
+            .AsQueryable();
+
+        if (selectedCategoryId is not null)
+        {
+            query = query.Where(product => product.Category_Id == selectedCategoryId);
+        }
+
+        products = query
+            .OrderBy(product => product.Product_DisplayOrder)
+            .ThenBy(product => product.Product_Id);
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            selectedCategoryId = null;
+        }
+        else if (int.TryParse(value, out var categoryId))
+        {
+            selectedCategoryId = categoryId;
+        }
+
+        LoadProductsQuery();
+    }
+
+    private async Task MoveProductUp(int productId)
+    {
+        if (!canEdit || selectedCategoryId is null)
+        {
+            return;
+        }
+
+        using var dbContext = DbFactory.CreateDbContext();
+
+        var currentProduct = await dbContext.Products
+            .FirstOrDefaultAsync(product => product.Product_Id == productId);
+
+        if (currentProduct is null || currentProduct.Category_Id != selectedCategoryId)
+        {
+            return;
+        }
+
+        var previousProduct = await dbContext.Products
+            .Where(product =>
+                product.Category_Id == currentProduct.Category_Id &&
+                product.Product_DisplayOrder < currentProduct.Product_DisplayOrder)
+            .OrderByDescending(product => product.Product_DisplayOrder)
+            .ThenByDescending(product => product.Product_Id)
+            .FirstOrDefaultAsync();
+
+        if (previousProduct is null)
+        {
+            return;
+        }
+
+        var tempOrder = currentProduct.Product_DisplayOrder;
+        currentProduct.Product_DisplayOrder = previousProduct.Product_DisplayOrder;
+        previousProduct.Product_DisplayOrder = tempOrder;
+
+        await dbContext.SaveChangesAsync();
+
+        await ReloadProductsAsync();
+    }
+
+    private async Task MoveProductDown(int productId)
+    {
+        if (!canEdit || selectedCategoryId is null)
+        {
+            return;
+        }
+
+        using var dbContext = DbFactory.CreateDbContext();
+
+        var currentProduct = await dbContext.Products
+            .FirstOrDefaultAsync(product => product.Product_Id == productId);
+
+        if (currentProduct is null || currentProduct.Category_Id != selectedCategoryId)
+        {
+            return;
+        }
+
+        var nextProduct = await dbContext.Products
+            .Where(product =>
+                product.Category_Id == currentProduct.Category_Id &&
+                product.Product_DisplayOrder > currentProduct.Product_DisplayOrder)
+            .OrderBy(product => product.Product_DisplayOrder)
+            .ThenBy(product => product.Product_Id)
+            .FirstOrDefaultAsync();
+
+        if (nextProduct is null)
+        {
+            return;
+        }
+
+        var tempOrder = currentProduct.Product_DisplayOrder;
+        currentProduct.Product_DisplayOrder = nextProduct.Product_DisplayOrder;
+        nextProduct.Product_DisplayOrder = tempOrder;
+
+        await dbContext.SaveChangesAsync();
+
+        await ReloadProductsAsync();
+    }
+
+    private async Task ReloadProductsAsync()
+    {
+        if (context is not null)
+        {
+            await context.DisposeAsync();
+        }
+
+        context = DbFactory.CreateDbContext();
+
+        LoadProductsQuery();
+
+        await InvokeAsync(StateHasChanged);
     }
 
     public async ValueTask DisposeAsync()

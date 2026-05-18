@@ -32,9 +32,21 @@ namespace ClothingStoreWeb.Models
         [StringLength(100, ErrorMessage = "Название цвета не должно превышать 100 символов")]
         public string? Product_Coloring { get; set; }
 
+        [Display(Name = "Порядок отображения")]
+        public int Product_DisplayOrder { get; set; }
+
         [Display(Name = "Путь к изображению")]
         [StringLength(500, ErrorMessage = "Путь к изображению не должен превышать 500 символов")]
         public string? Product_ImagePath { get; set; }
+
+        [StringLength(500, ErrorMessage = "Путь к изображению не должен превышать 500 символов")]
+        public string? Product_ImagePath2 { get; set; }
+
+        [StringLength(500, ErrorMessage = "Путь к изображению не должен превышать 500 символов")]
+        public string? Product_ImagePath3 { get; set; }
+
+        [StringLength(500, ErrorMessage = "Путь к изображению не должен превышать 500 символов")]
+        public string? Product_ImagePath4 { get; set; }
 
         public Category? Category { get; set; }
 

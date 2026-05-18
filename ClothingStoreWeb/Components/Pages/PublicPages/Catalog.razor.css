@@ -4,20 +4,29 @@
 
 .catalog-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 36px 28px;
+    align-items: start;
 }
 
 .catalog-card {
-    border: 1px solid #ddd;
-    border-radius: 12px;
+    border: none;
+    border-radius: 0;
     background: #fff;
     overflow: hidden;
 }
 
+.catalog-image-link {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
 .catalog-image {
-    height: 280px;
-    background: #f4f4f4;
+    width: 100%;
+    height: 700px;
+    background: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -27,23 +36,61 @@
     .catalog-image img {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
+        display: block;
+        transition: transform 0.25s ease, opacity 0.25s ease;
     }
 
+.catalog-image-link:hover img {
+    transform: scale(1.03);
+    opacity: 0.96;
+}
+
 .catalog-no-image {
+    width: 100%;
+    height: 100%;
+    background: #f4f4f4;
     color: #777;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .catalog-card-body {
-    padding: 16px;
+    padding-top: 12px;
+    text-align: center;
 }
 
-    .catalog-card-body h3 {
-        margin-bottom: 12px;
-    }
+.catalog-name {
+    font-size: 15px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
 
 .catalog-price {
-    font-size: 18px;
+    margin-top: 4px;
+    font-size: 15px;
     font-weight: 600;
-    margin-top: 12px;
+}
+
+@media (max-width: 1100px) {
+    .catalog-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .catalog-image {
+        height: 620px;
+    }
+}
+
+@media (max-width: 700px) {
+    .catalog-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .catalog-image {
+        height: 540px;
+    }
 }

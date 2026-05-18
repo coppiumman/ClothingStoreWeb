@@ -18,16 +18,101 @@
 else
 {
     <div class="product-details">
-        <div class="product-details-image">
-            @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+        <div class="product-details-images">
+            @{
+                var productImages = GetProductImages();
+            }
+
+            @if (productImages.Any())
             {
-                <img src="@product.Product_ImagePath" alt="@product.Product_Name" />
+                <div class="product-main-image">
+                    <img src="@productImages[selectedImageIndex]"
+                         alt="@product.Product_Name"
+                         class="main-image-slide @slideDirection"
+                         @key="selectedImageIndex"
+                         @onclick="OpenImageViewer" />
+
+                    @if (productImages.Count > 1)
+                    {
+                        <button type="button"
+                                class="gallery-arrow gallery-arrow-left"
+                                @onclick="ShowPreviousImage"
+                                @onclick:stopPropagation="true">
+                            ‹
+                        </button>
+
+                        <button type="button"
+                                class="gallery-arrow gallery-arrow-right"
+                                @onclick="ShowNextImage"
+                                @onclick:stopPropagation="true">
+                            ›
+                        </button>
+                    }
+                </div>
+
+                @if (productImages.Count > 1)
+                {
+                    <div class="product-gallery">
+                        @for (var i = 0; i < productImages.Count; i++)
+                        {
+                            var imageIndex = i;
+
+                            <button type="button"
+                                    class="product-gallery-button @(selectedImageIndex == imageIndex ? "active" : "")"
+                                    @onclick="() => SelectImage(imageIndex)">
+                                <img src="@productImages[imageIndex]"
+                                     alt="@product.Product_Name"
+                                     class="product-gallery-image" />
+                            </button>
+                        }
+                    </div>
+                }
             }
             else
             {
                 <div class="product-no-image">Нет изображения</div>
             }
         </div>
+
+        @if (isImageViewerOpen)
+        {
+            var viewerImages = GetProductImages();
+
+            <div class="image-viewer-overlay" @onclick="CloseImageViewer">
+                <div class="image-viewer-box" @onclick:stopPropagation="true">
+                    <img src="@viewerImages[selectedImageIndex]"
+                         alt="@product.Product_Name"
+                         class="image-viewer-content @(isModalImageZoomed ? "zoomed" : "") @(isDraggingImage ? "dragging" : "")"
+                         style="@GetViewerImageStyle()"
+                         draggable="false"
+                         @key="selectedImageIndex"
+                         @onclick="ToggleModalImageZoom"
+                         @onclick:stopPropagation="true"
+                         @ondragstart:preventDefault="true"
+                         @onpointerdown="StartImageDrag"
+                         @onpointermove="MoveImageDrag"
+                         @onpointerup="StopImageDrag"
+                         @onpointerleave="StopImageDrag" />
+                </div>
+
+                @if (viewerImages.Count > 1)
+                {
+                    <button type="button"
+                            class="viewer-arrow viewer-arrow-left"
+                            @onclick="ShowPreviousImage"
+                            @onclick:stopPropagation="true">
+                        ‹
+                    </button>
+
+                    <button type="button"
+                            class="viewer-arrow viewer-arrow-right"
+                            @onclick="ShowNextImage"
+                            @onclick:stopPropagation="true">
+                        ›
+                    </button>
+                }
+            </div>
+        }
 
         <div class="product-details-info">
             <h1>@product.Product_Name</h1>
@@ -110,6 +195,22 @@ else
     private Product? product;
     private List<Stock> stocks = new();
     private int? selectedStockId;
+    private int selectedImageIndex;
+    private int previousImageIndex;
+    private string slideDirection = "next";
+    private bool isImageViewerOpen;
+    private bool isModalImageZoomed;
+    private bool isDraggingImage;
+    private bool wasImageDragged;
+    private double dragStartX;
+    private double dragStartY;
+    private double pointerDownX;
+    private double pointerDownY;
+    private double imageOffsetX;
+    private double imageOffsetY;
+
+    private const double MaxImageOffsetX = 500;
+    private const double MaxImageOffsetY = 500;
 
     protected override async Task OnInitializedAsync()
     {
@@ -161,6 +262,201 @@ else
         });
 
         NavigationManager.NavigateTo("/cart");
+    }
+
+    private List<string> GetProductImages()
+    {
+        var images = new List<string>();
+
+        if (product is null)
+        {
+            return images;
+        }
+
+        if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+        {
+            images.Add(product.Product_ImagePath);
+        }
+
+        if (!string.IsNullOrWhiteSpace(product.Product_ImagePath2))
+        {
+            images.Add(product.Product_ImagePath2);
+        }
+
+        if (!string.IsNullOrWhiteSpace(product.Product_ImagePath3))
+        {
+            images.Add(product.Product_ImagePath3);
+        }
+
+        if (!string.IsNullOrWhiteSpace(product.Product_ImagePath4))
+        {
+            images.Add(product.Product_ImagePath4);
+        }
+
+        return images;
+    }
+
+    private void SelectImage(int imageIndex)
+    {
+        if (imageIndex == selectedImageIndex)
+        {
+            return;
+        }
+
+        previousImageIndex = selectedImageIndex;
+        slideDirection = imageIndex > selectedImageIndex ? "next" : "prev";
+        selectedImageIndex = imageIndex;
+    }
+
+    private void ShowPreviousImage()
+    {
+        var images = GetProductImages();
+
+        if (!images.Any())
+        {
+            return;
+        }
+
+        previousImageIndex = selectedImageIndex;
+        slideDirection = "prev";
+
+        selectedImageIndex--;
+
+        if (selectedImageIndex < 0)
+        {
+            selectedImageIndex = images.Count - 1;
+        }
+
+        ResetModalImageZoom();
+
+        isModalImageZoomed = false;
+    }
+
+    private void ShowNextImage()
+    {
+        var images = GetProductImages();
+
+        if (!images.Any())
+        {
+            return;
+        }
+
+        previousImageIndex = selectedImageIndex;
+        slideDirection = "next";
+
+        selectedImageIndex++;
+
+        if (selectedImageIndex >= images.Count)
+        {
+            selectedImageIndex = 0;
+        }
+
+        ResetModalImageZoom();
+
+        isModalImageZoomed = false;
+    }
+
+    private void OpenImageViewer()
+    {
+        isImageViewerOpen = true;
+        ResetModalImageZoom();
+    }
+
+    private void CloseImageViewer()
+    {
+        isImageViewerOpen = false;
+        ResetModalImageZoom();
+    }
+
+    private void ToggleModalImageZoom()
+    {
+        if (wasImageDragged)
+        {
+            wasImageDragged = false;
+            return;
+        }
+
+        isModalImageZoomed = !isModalImageZoomed;
+
+        if (!isModalImageZoomed)
+        {
+            imageOffsetX = 0;
+            imageOffsetY = 0;
+            isDraggingImage = false;
+        }
+    }
+
+    private void StartImageDrag(PointerEventArgs e)
+    {
+        if (!isModalImageZoomed)
+        {
+            return;
+        }
+
+        isDraggingImage = true;
+        wasImageDragged = false;
+
+        pointerDownX = e.ClientX;
+        pointerDownY = e.ClientY;
+
+        dragStartX = e.ClientX - imageOffsetX;
+        dragStartY = e.ClientY - imageOffsetY;
+    }
+
+    private void MoveImageDrag(PointerEventArgs e)
+    {
+        if (!isModalImageZoomed || !isDraggingImage)
+        {
+            return;
+        }
+
+        var movedX = Math.Abs(e.ClientX - pointerDownX);
+        var movedY = Math.Abs(e.ClientY - pointerDownY);
+
+        if (movedX > 3 || movedY > 3)
+        {
+            wasImageDragged = true;
+        }
+
+        imageOffsetX = e.ClientX - dragStartX;
+        imageOffsetY = e.ClientY - dragStartY;
+    }
+
+    private void StopImageDrag()
+    {
+        if (isDraggingImage && wasImageDragged)
+        {
+            var isOutsideAllowedArea =
+                Math.Abs(imageOffsetX) > MaxImageOffsetX ||
+                Math.Abs(imageOffsetY) > MaxImageOffsetY;
+
+            if (isOutsideAllowedArea)
+            {
+                imageOffsetX = 0;
+                imageOffsetY = 0;
+            }
+        }
+
+        isDraggingImage = false;
+    }
+
+    private string GetViewerImageStyle()
+    {
+        if (!isModalImageZoomed)
+        {
+            return string.Empty;
+        }
+
+        return $"transform: translate({imageOffsetX}px, {imageOffsetY}px) scale(1.6);";
+    }
+
+    private void ResetModalImageZoom()
+    {
+        isModalImageZoomed = false;
+        isDraggingImage = false;
+        wasImageDragged = false;
+        imageOffsetX = 0;
+        imageOffsetY = 0;
     }
 
 }

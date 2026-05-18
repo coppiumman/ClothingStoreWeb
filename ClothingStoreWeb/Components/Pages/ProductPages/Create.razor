@@ -5,6 +5,8 @@
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Environment
+@using Microsoft.AspNetCore.Components.Forms
 
 <PageTitle>Добавление</PageTitle>
 
@@ -18,52 +20,173 @@
 }
 else
 {
-    <div class="row">
-        <div class="col-md-4">
+    <div class="product-edit-page">
             <EditForm method="post" Model="Product" OnValidSubmit="AddProduct" FormName="create" Enhance>
                 <DataAnnotationsValidator />
-                <ValidationSummary class="text-danger" role="alert"/>
-                <div class="mb-3">
-                    <label for="category_id" class="form-label">Категория</label>
-                    <InputSelect id="category_id" @bind-Value="Product.Category_Id" class="form-control" aria-required="true">
-                        <option value="0">Выберите категорию</option>
-                        @foreach (var category in Categories)
-                        {
-                            <option value="@category.Category_Id">@category.Category_Name</option>
-                        }
-                    </InputSelect>
-                    <ValidationMessage For="() => Product.Category_Id" class="text-danger" />
+                <ValidationSummary class="text-danger" role="alert" />
+
+                <div class="product-edit-layout">
+                    <div class="product-edit-fields">
+                        <div class="mb-3">
+                            <label for="category_id" class="form-label">Категория</label>
+                            <InputSelect id="category_id" @bind-Value="Product.Category_Id" class="form-control" aria-required="true">
+                                <option value="0">Выберите категорию</option>
+                                @foreach (var category in Categories)
+                                {
+                                    <option value="@category.Category_Id">@category.Category_Name</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="() => Product.Category_Id" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <span class="text-danger">*</span>
+                            <label for="product_name" class="form-label">Название товара:</label>
+                            <InputText id="product_name" @bind-Value="Product.Product_Name" class="form-control" aria-required="true" />
+                            <ValidationMessage For="() => Product.Product_Name" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="product_description" class="form-label">Описание товара:</label>
+                            <InputText id="product_description" @bind-Value="Product.Product_Description" class="form-control" />
+                            <ValidationMessage For="() => Product.Product_Description" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <span class="text-danger">*</span>
+                            <label for="product_price" class="form-label">Цена:</label>
+                            <InputNumber id="product_price" @bind-Value="Product.Product_Price" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную цену" />
+                            <ValidationMessage For="() => Product.Product_Price" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="product_coloring" class="form-label">Цвет:</label>
+                            <InputText id="product_coloring" @bind-Value="Product.Product_Coloring" class="form-control" />
+                            <ValidationMessage For="() => Product.Product_Coloring" class="text-danger" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Добавить</button>
+
+                        <div class="mt-2">
+                            <a href="/products">Вернуться к списку</a>
+                        </div>
+                    </div>
+
+                    <div class="product-edit-images-panel">
+                        <h3>Изображения товара</h3>
+
+                        <div class="product-images-grid">
+                            <div class="product-image-edit-block">
+                                <label for="product_image1" class="form-label">Основное изображение:</label>
+                                <InputFile id="product_image1" OnChange="UploadMainImage" class="form-control" accept="image/*" />
+
+                            <div class="product-image-preview">
+                                @if (!string.IsNullOrWhiteSpace(Product.Product_ImagePath))
+                                {
+                                    <img src="@Product.Product_ImagePath" alt="Основное изображение товара" />
+                                }
+                                else
+                                {
+                                    <span class="product-no-preview">Изображение не загружено</span>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(Product.Product_ImagePath))
+                            {
+                                <div class="product-image-actions">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearMainImage">
+                                        Удалить изображение
+                                    </button>
+                                </div>
+                            }
+
+                                <ValidationMessage For="() => Product.Product_ImagePath" class="text-danger" />
+                            </div>
+
+                            <div class="product-image-edit-block">
+                                <label for="product_image2" class="form-label">Дополнительное изображение 1:</label>
+                                <InputFile id="product_image2" OnChange="UploadImage2" class="form-control" accept="image/*" />
+
+                            <div class="product-image-preview">
+                                @if (!string.IsNullOrWhiteSpace(Product.Product_ImagePath2))
+                                {
+                                    <img src="@Product.Product_ImagePath2" alt="Дополнительное изображение 1" />
+                                }
+                                else
+                                {
+                                    <span class="product-no-preview">Изображение не загружено</span>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(Product.Product_ImagePath2))
+                            {
+                                <div class="product-image-actions">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearImage2">
+                                        Удалить изображение
+                                    </button>
+                                </div>
+                            }
+
+                                <ValidationMessage For="() => Product.Product_ImagePath2" class="text-danger" />
+                            </div>
+
+                            <div class="product-image-edit-block">
+                                <label for="product_image3" class="form-label">Дополнительное изображение 2:</label>
+                                <InputFile id="product_image3" OnChange="UploadImage3" class="form-control" accept="image/*" />
+
+                            <div class="product-image-preview">
+                                @if (!string.IsNullOrWhiteSpace(Product.Product_ImagePath3))
+                                {
+                                    <img src="@Product.Product_ImagePath3" alt="Дополнительное изображение 2" />
+                                }
+                                else
+                                {
+                                    <span class="product-no-preview">Изображение не загружено</span>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(Product.Product_ImagePath3))
+                            {
+                                <div class="product-image-actions">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearImage3">
+                                        Удалить изображение
+                                    </button>
+                                </div>
+                            }
+
+                                <ValidationMessage For="() => Product.Product_ImagePath3" class="text-danger" />
+                            </div>
+
+                            <div class="product-image-edit-block">
+                                <label for="product_image4" class="form-label">Дополнительное изображение 3:</label>
+                                <InputFile id="product_image4" OnChange="UploadImage4" class="form-control" accept="image/*" />
+
+                            <div class="product-image-preview">
+                                @if (!string.IsNullOrWhiteSpace(Product.Product_ImagePath4))
+                                {
+                                    <img src="@Product.Product_ImagePath4" alt="Дополнительное изображение 3" />
+                                }
+                                else
+                                {
+                                    <span class="product-no-preview">Изображение не загружено</span>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(Product.Product_ImagePath4))
+                            {
+                                <div class="product-image-actions">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearImage4">
+                                        Удалить изображение
+                                    </button>
+                                </div>
+                            }
+
+                                <ValidationMessage For="() => Product.Product_ImagePath4" class="text-danger" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="product_name" class="form-label">Название товара:</label> 
-                    <InputText id="product_name" @bind-Value="Product.Product_Name" class="form-control" aria-required="true"/> 
-                    <ValidationMessage For="() => Product.Product_Name" class="text-danger" /> 
-                </div>        
-                <div class="mb-3">
-                    <label for="product_description" class="form-label">Описание товара:</label> 
-                    <InputText id="product_description" @bind-Value="Product.Product_Description" class="form-control" /> 
-                    <ValidationMessage For="() => Product.Product_Description" class="text-danger" /> 
-                </div>        
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="product_price" class="form-label">Цена:</label> 
-                    <InputNumber id="product_price" @bind-Value="Product.Product_Price" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную цену"/> 
-                    <ValidationMessage For="() => Product.Product_Price" class="text-danger" /> 
-                </div>        
-                <div class="mb-3">
-                    <label for="product_coloring" class="form-label">Цвет:</label> 
-                    <InputText id="product_coloring" @bind-Value="Product.Product_Coloring" class="form-control" /> 
-                    <ValidationMessage For="() => Product.Product_Coloring" class="text-danger" /> 
-                </div>        
-                <div class="mb-3">
-                    <label for="product_imagepath" class="form-label">Путь к изображению:</label> 
-                    <InputText id="product_imagepath" @bind-Value="Product.Product_ImagePath" class="form-control" /> 
-                    <ValidationMessage For="() => Product.Product_ImagePath" class="text-danger" /> 
-                </div>        
-                <button type="submit" class="btn btn-primary">Добавить</button>
             </EditForm>
-        </div>
     </div>
 }
 
@@ -93,9 +216,135 @@ else
 
     private async Task AddProduct()
     {
+        if (Product.Category_Id <= 0)
+        {
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
+
+        var maxDisplayOrder = await context.Products
+            .Where(product => product.Category_Id == Product.Category_Id)
+            .MaxAsync(product => (int?)product.Product_DisplayOrder) ?? 0;
+
+        Product.Product_DisplayOrder = maxDisplayOrder + 1;
+
         context.Products.Add(Product);
         await context.SaveChangesAsync();
+
         NavigationManager.NavigateTo("/products");
+    }
+
+    private void ClearMainImage()
+    {
+        if (Product is null)
+        {
+            return;
+        }
+
+        Product.Product_ImagePath = null;
+    }
+
+    private void ClearImage2()
+    {
+        if (Product is null)
+        {
+            return;
+        }
+
+        Product.Product_ImagePath2 = null;
+    }
+
+    private void ClearImage3()
+    {
+        if (Product is null)
+        {
+            return;
+        }
+
+        Product.Product_ImagePath3 = null;
+    }
+
+    private void ClearImage4()
+    {
+        if (Product is null)
+        {
+            return;
+        }
+
+        Product.Product_ImagePath4 = null;
+    }
+
+    private async Task UploadMainImage(InputFileChangeEventArgs e)
+    {
+        if (Product is null)
+        {
+            return;
+        }
+
+        Product.Product_ImagePath = await SaveImageAsync(e);
+    }
+
+    private async Task UploadImage2(InputFileChangeEventArgs e)
+    {
+        if (Product is null)
+        {
+            return;
+        }
+
+        Product.Product_ImagePath2 = await SaveImageAsync(e);
+    }
+
+    private async Task UploadImage3(InputFileChangeEventArgs e)
+    {
+        if (Product is null)
+        {
+            return;
+        }
+
+        Product.Product_ImagePath3 = await SaveImageAsync(e);
+    }
+
+    private async Task UploadImage4(InputFileChangeEventArgs e)
+    {
+        if (Product is null)
+        {
+            return;
+        }
+
+        Product.Product_ImagePath4 = await SaveImageAsync(e);
+    }
+
+    private async Task<string?> SaveImageAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+
+        if (file is null)
+        {
+            return null;
+        }
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+
+        if (!allowedExtensions.Contains(extension))
+        {
+            return null;
+        }
+
+        var uploadsFolder = Path.Combine(Environment.WebRootPath, "images", "products");
+
+        if (!Directory.Exists(uploadsFolder))
+        {
+            Directory.CreateDirectory(uploadsFolder);
+        }
+
+        var fileName = $"{Guid.NewGuid()}{extension}";
+        var filePath = Path.Combine(uploadsFolder, fileName);
+
+        await using var stream = new FileStream(filePath, FileMode.Create);
+        await file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024).CopyToAsync(stream);
+
+        return $"/images/products/{fileName}";
     }
 }
