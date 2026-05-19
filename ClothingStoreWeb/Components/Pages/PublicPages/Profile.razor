@@ -12,91 +12,218 @@
 
 <PageTitle>Личный кабинет</PageTitle>
 
-<h1>Личный кабинет</h1>
-
-<p>
-    На этой странице пользователь сможет просматривать свои данные и историю заказов.
-</p>
-
-<div class="profile-card">
-    <h3>Данные пользователя</h3>
-
-    @if (userEmail is null)
-    {
-        <p><em>Загрузка...</em></p>
-    }
-    else
-    {
-        <p>
-            <strong>Email:</strong> @userEmail
-        </p>
-    }
-
-    <form action="/Account/Logout" method="post" class="profile-logout-form">
-        <AntiforgeryToken />
-        <button type="submit" class="btn btn-outline-danger">
-            Выйти из аккаунта
+<div class="profile-page">
+    <nav class="profile-tabs">
+        <button type="button"
+                class="profile-tab @(activeTab == "current" ? "active" : "")"
+                @onclick='() => SelectTab("current")'>
+            Текущие заказы
         </button>
-    </form>
 
-</div>
+        <button type="button"
+                class="profile-tab @(activeTab == "history" ? "active" : "")"
+                @onclick='() => SelectTab("history")'>
+            История заказов
+        </button>
 
-<div class="profile-card">
-    <h3>История заказов</h3>
+        <button type="button"
+                class="profile-tab @(activeTab == "profile" ? "active" : "")"
+                @onclick='() => SelectTab("profile")'>
+            Профиль
+        </button>
 
-    @if (!userOrders.Any())
+        <form action="/Account/Logout" method="post" class="profile-tab-logout-form">
+            <AntiforgeryToken />
+            <button type="submit" class="profile-tab logout">
+                Выход
+            </button>
+        </form>
+    </nav>
+
+    @if (activeTab == "profile")
     {
-        <p>У вас пока нет оформленных заказов.</p>
+        <section class="profile-section">
+            <h2>Персональные данные</h2>
+
+            @if (userEmail is null)
+            {
+                <p class="profile-muted"><em>Загрузка...</em></p>
+            }
+            else
+            {
+                <div class="profile-data">
+                    <div class="profile-data-row">
+                        <span class="profile-data-label">ФИО:</span>
+                        <span class="profile-data-value">@GetDisplayFullName()</span>
+                    </div>
+
+                    <div class="profile-data-row">
+                        <span class="profile-data-label">Email:</span>
+                        <span class="profile-data-value">@userEmail</span>
+                    </div>
+
+                    <div class="profile-data-row">
+                        <span class="profile-data-label">Телефон:</span>
+                        <span class="profile-data-value">@GetDisplayPhoneNumber()</span>
+                    </div>
+                </div>
+
+                <div class="profile-actions">
+                    <button type="button" class="profile-action-button">
+                        Изменить пароль
+                    </button>
+
+                    <button type="button" class="profile-action-button">
+                        Изменить почту
+                    </button>
+
+                    <button type="button" class="profile-action-button">
+                        Изменить личные данные
+                    </button>
+                </div>
+            }
+        </section>
     }
-    else
+
+    @if (activeTab == "current")
     {
-        <div class="orders-history-scroll">
-            <table class="profile-orders-table">
-                <thead>
-                    <tr>
-                        <th>Номер заказа</th>
-                        <th>Дата заказа</th>
-                        <th>Статус</th>
-                        <th>Сумма</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
+        <section class="profile-section">
+            @if (!CurrentOrders.Any())
+            {
+                <div class="profile-empty">
+                    <div class="profile-empty-title">Текущих заказов нет</div>
+                    <div class="profile-empty-text">После оформления заказа он появится в этом разделе.</div>
+                </div>
+            }
+            else
+            {
+                <div class="orders-history-scroll">
+                    <table class="profile-orders-table">
+                        <thead>
+                            <tr>
+                                <th>Номер заказа</th>
+                                <th>Дата заказа</th>
+                                <th>Статус</th>
+                                <th>Сумма</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
 
-                <tbody>
-                    @foreach (var order in userOrders)
-                    {
-                        <tr>
-                            <td>Заказ №@order.Order_Id</td>
-                            <td>@order.Order_Date.ToString("dd.MM.yyyy HH:mm")</td>
-                            <td>@GetOrderStatusName(order.Order_Status)</td>
-                            <td>@order.Order_TotalAmount.ToString("N2") ₽</td>
-                            <td>
-                                <a href="@($"/profile/order?id={order.Order_Id}")">Подробнее</a>
+                        <tbody>
+                            @foreach (var order in CurrentOrders)
+                            {
+                                <tr>
+                                    <td>Заказ №@order.Order_Id</td>
+                                    <td>@order.Order_Date.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>
+                                        <span class="profile-status @GetOrderStatusCssClass(order.Order_Status)">
+                                            @GetOrderStatusName(order.Order_Status)
+                                        </span>
+                                    </td>
+                                    <td>@order.Order_TotalAmount.ToString("N2") ₽</td>
+                                    <td>
+                                        <div class="profile-order-actions">
+                                            <a class="profile-small-button"
+                                               href="@($"/profile/order?id={order.Order_Id}&returnTab=current")">
+                                                Подробнее
+                                            </a>
 
-                                @if (CanUserCancelOrder(order.Order_Status))
-                                {
-                                    <span> | </span>
-                                    <a href="@($"/profile/order-cancel?id={order.Order_Id}")">Отменить</a>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+                                            @if (CanUserCancelOrder(order.Order_Status))
+                                            {
+                                                <a class="profile-small-button danger"
+                                                   href="@($"/profile/order-cancel?id={order.Order_Id}")">
+                                                    Отменить
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+
+    @if (activeTab == "history")
+    {
+        <section class="profile-section">
+            @if (!HistoryOrders.Any())
+            {
+                <div class="profile-empty">
+                    <div class="profile-empty-title">История заказов пуста</div>
+                    <div class="profile-empty-text">Завершённые, отменённые и возвращённые заказы появятся здесь.</div>
+                </div>
+            }
+            else
+            {
+                <div class="orders-history-scroll">
+                    <table class="profile-orders-table">
+                        <thead>
+                            <tr>
+                                <th>Номер заказа</th>
+                                <th>Дата заказа</th>
+                                <th>Статус</th>
+                                <th>Сумма</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var order in HistoryOrders)
+                            {
+                                <tr>
+                                    <td>Заказ №@order.Order_Id</td>
+                                    <td>@order.Order_Date.ToString("dd.MM.yyyy HH:mm")</td>
+                                    <td>
+                                        <span class="profile-status @GetOrderStatusCssClass(order.Order_Status)">
+                                            @GetOrderStatusName(order.Order_Status)
+                                        </span>
+                                    </td>
+                                    <td>@order.Order_TotalAmount.ToString("N2") ₽</td>
+                                    <td>
+                                        <div class="profile-order-actions">
+                                            <a class="profile-small-button"
+                                               href="@($"/profile/order?id={order.Order_Id}&returnTab=history")">
+                                                Подробнее
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
     }
 </div>
 
 @code {
+    private string activeTab = "profile";
+
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? Tab { get; set; }
+
     private string? userEmail;
+    private string? userFullName;
+    private string? userPhoneNumber;
+
     private List<Order> userOrders = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Tab is "current" or "history" or "profile")
+        {
+            activeTab = Tab;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-
-        userEmail = user.Identity?.Name;
 
         var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
@@ -107,11 +234,49 @@
 
         await using var context = await DbFactory.CreateDbContextAsync();
 
+        var appUser = await context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(applicationUser => applicationUser.Id == userId);
+
+        userEmail = appUser?.Email ?? user.Identity?.Name;
+        userFullName = appUser?.UserFullName;
+        userPhoneNumber = appUser?.PhoneNumber;
+
         userOrders = await context.Orders
             .AsNoTracking()
             .Where(order => order.User_Id == userId)
             .OrderByDescending(order => order.Order_Date)
             .ToListAsync();
+    }
+
+    private IEnumerable<Order> CurrentOrders =>
+    userOrders.Where(order => IsCurrentOrder(order.Order_Status));
+
+    private IEnumerable<Order> HistoryOrders =>
+        userOrders.Where(order => !IsCurrentOrder(order.Order_Status));
+
+    private void SelectTab(string tab)
+    {
+        activeTab = tab;
+    }
+
+    private static bool IsCurrentOrder(string? status)
+    {
+        return status is "new" or "confirmed" or "paid" or "processing" or "shipped";
+    }
+
+    private string GetDisplayFullName()
+    {
+        return string.IsNullOrWhiteSpace(userFullName)
+            ? "Не указано"
+            : userFullName;
+    }
+
+    private string GetDisplayPhoneNumber()
+    {
+        return string.IsNullOrWhiteSpace(userPhoneNumber)
+            ? "Не указан"
+            : userPhoneNumber;
     }
 
     private static string GetOrderStatusName(string? status)
@@ -128,6 +293,23 @@
             "cancelled" => "Отменён",
             "returned" => "Возврат",
             _ => status ?? ""
+        };
+    }
+
+    private static string GetOrderStatusCssClass(string? status)
+    {
+        return status switch
+        {
+            "new" => "new",
+            "confirmed" => "confirmed",
+            "paid" => "paid",
+            "processing" => "processing",
+            "shipped" => "shipped",
+            "delivered" => "delivered",
+            "done" => "done",
+            "cancelled" => "cancelled",
+            "returned" => "returned",
+            _ => "default"
         };
     }
 

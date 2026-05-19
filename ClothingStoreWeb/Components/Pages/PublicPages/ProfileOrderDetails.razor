@@ -15,76 +15,89 @@
 
 <PageTitle>Подробности заказа</PageTitle>
 
-<h1>Подробности заказа</h1>
+<div class="order-details-page">
+    <h1>Подробности заказа</h1>
 
-@if (order is null)
-{
-    <p><em>Загрузка...</em></p>
-}
-else
-{
-    <div class="order-details-card">
-        <h3>Заказ №@order.Order_Id</h3>
+    @if (order is null)
+    {
+        <p class="order-details-muted"><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <section class="order-details-summary">
+            <div>
+                <div class="order-details-label">Номер заказа</div>
+                <div class="order-details-value">Заказ №@order.Order_Id</div>
+            </div>
 
-        <p>
-            <strong>Дата заказа:</strong>
-            @order.Order_Date.ToString("dd.MM.yyyy HH:mm")
+            <div>
+                <div class="order-details-label">Дата заказа</div>
+                <div class="order-details-value">@order.Order_Date.ToString("dd.MM.yyyy HH:mm")</div>
+            </div>
+
+            <div>
+                <div class="order-details-label">Статус</div>
+                <div class="order-details-value">@GetOrderStatusName(order.Order_Status)</div>
+            </div>
+
+            <div>
+                <div class="order-details-label">Сумма заказа</div>
+                <div class="order-details-value">@order.Order_TotalAmount.ToString("N2") ₽</div>
+            </div>
+        </section>
+
+        <section class="order-details-section">
+            <h2>Состав заказа</h2>
+
+            @if (!order.OrderItems.Any())
+            {
+                <p class="order-details-muted">В заказе нет позиций.</p>
+            }
+            else
+            {
+                <div class="order-items-scroll">
+                    <table class="order-items-table">
+                        <thead>
+                            <tr>
+                                <th>Товар</th>
+                                <th>Размер</th>
+                                <th>Количество</th>
+                                <th>Цена</th>
+                                <th>Сумма</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var item in order.OrderItems)
+                            {
+                                <tr>
+                                    <td>@item.Product?.Product_Name</td>
+                                    <td>@item.Size?.Size_Name</td>
+                                    <td>@item.OrderItem_Quantity</td>
+                                    <td>@item.OrderItem_Price.ToString("N2") ₽</td>
+                                    <td>@((item.OrderItem_Price * item.OrderItem_Quantity).ToString("N2")) ₽</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <p class="order-details-back">
+            <a class="order-details-button" href="@GetReturnProfileUrl()">
+                Вернуться в личный кабинет
+            </a>
         </p>
-
-        <p>
-            <strong>Статус:</strong>
-            @GetOrderStatusName(order.Order_Status)
-        </p>
-
-        <p>
-            <strong>Сумма заказа:</strong>
-            @order.Order_TotalAmount.ToString("N2") ₽
-        </p>
-    </div>
-
-    <div class="order-details-card">
-        <h3>Состав заказа</h3>
-
-        @if (!order.OrderItems.Any())
-        {
-            <p>В заказе нет позиций.</p>
-        }
-        else
-        {
-            <table class="order-items-table">
-                <thead>
-                    <tr>
-                        <th>Товар</th>
-                        <th>Размер</th>
-                        <th>Количество</th>
-                        <th>Цена</th>
-                        <th>Сумма</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in order.OrderItems)
-                    {
-                        <tr>
-                            <td>@item.Product?.Product_Name</td>
-                            <td>@item.Size?.Size_Name</td>
-                            <td>@item.OrderItem_Quantity</td>
-                            <td>@item.OrderItem_Price.ToString("N2") ₽</td>
-                            <td>@((item.OrderItem_Price * item.OrderItem_Quantity).ToString("N2")) ₽</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-    </div>
-}
-
-<p>
-    <a href="/profile">Вернуться в личный кабинет</a>
-</p>
+    }
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")]
     private int Order_Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnTab")]
+    private string? ReturnTab { get; set; }
 
     private Order? order;
 
@@ -131,6 +144,16 @@ else
             "cancelled" => "Отменён",
             "returned" => "Возврат",
             _ => status ?? ""
+        };
+    }
+
+    private string GetReturnProfileUrl()
+    {
+        return ReturnTab switch
+        {
+            "current" => "/profile?tab=current",
+            "history" => "/profile?tab=history",
+            _ => "/profile?tab=profile"
         };
     }
 }

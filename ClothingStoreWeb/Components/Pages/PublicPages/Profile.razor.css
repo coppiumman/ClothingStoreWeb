@@ -1,38 +1,159 @@
-.profile-card {
-    max-width: 900px;
-    margin-top: 24px;
-    padding: 28px;
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    background: #f7f7f7;
+.profile-page {
+    padding: 34px 48px 60px;
 }
 
-    .profile-card h3 {
-        margin-bottom: 16px;
+.profile-tabs {
+    display: flex;
+    align-items: center;
+    gap: 58px;
+    margin-bottom: 44px;
+    border-bottom: 1px solid #e5e5e5;
+    padding-bottom: 22px;
+}
+
+.profile-tab {
+    border: none;
+    background: transparent;
+    color: #8a8a8a;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 17px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.15s ease;
+}
+
+    .profile-tab:hover {
+        color: #111;
     }
 
-.profile-logout-form {
-    margin-top: 20px;
+    .profile-tab.active {
+        color: #111;
+        font-weight: 600;
+    }
+
+    .profile-tab.logout:hover {
+        color: #b00020;
+    }
+
+.profile-tab-logout-form {
+    margin: 0;
 }
 
+.profile-section {
+    width: 100%;
+    max-width: none;
+}
+
+    .profile-section h2 {
+        margin: 0 0 36px;
+        color: #111;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 24px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+    }
+
+.profile-data {
+    display: grid;
+    gap: 24px;
+    margin-bottom: 70px;
+}
+
+.profile-data-row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    align-items: baseline;
+}
+
+.profile-data-label {
+    color: #111;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+}
+
+.profile-data-value {
+    color: #333;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+}
+
+.profile-muted {
+    color: #777;
+}
+
+.profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 34px;
+    margin-bottom: 46px;
+}
+
+.profile-action-button,
+.profile-small-button {
+    border: 1px solid #222;
+    background: #fff;
+    color: #111;
+    text-decoration: none;
+    text-align: center;
+    padding: 13px 20px;
+    font-size: 14px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.profile-action-button {
+    min-width: 210px;
+}
+
+.profile-small-button {
+    min-width: 112px;
+    padding: 8px 12px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .profile-action-button:hover,
+    .profile-small-button:hover {
+        background: #222;
+        color: #fff;
+        text-decoration: none;
+    }
+
+    .profile-small-button.danger {
+        border-color: #b00020;
+        color: #b00020;
+    }
+
+        .profile-small-button.danger:hover {
+            background: #b00020;
+            color: #fff;
+        }
+
 .orders-history-scroll {
-    max-height: 360px;
+    max-height: 520px;
     overflow-y: auto;
-    margin-top: 12px;
-    padding-right: 6px;
+    overflow-x: hidden;
+    margin-top: 20px;
+    padding-right: 8px;
+    border: 1px solid #e2e2e2;
 }
 
 .profile-orders-table {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    margin-bottom: 0;
+    margin: 0;
 }
 
     .profile-orders-table th,
     .profile-orders-table td {
-        padding: 10px 12px;
-        border-bottom: 1px solid #ddd;
+        padding: 16px 18px;
+        border-bottom: 1px solid #e2e2e2;
         text-align: left;
         vertical-align: middle;
         white-space: nowrap;
@@ -41,24 +162,33 @@
     .profile-orders-table th {
         position: sticky;
         top: 0;
-        background: #f7f7f7;
+        background: #fff;
         z-index: 1;
+        color: #111;
+        font-size: 13px;
         font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .profile-orders-table td {
+        color: #333;
+        font-size: 14px;
     }
 
         .profile-orders-table th:nth-child(1),
         .profile-orders-table td:nth-child(1) {
-            width: 20%;
+            width: 17%;
         }
 
         .profile-orders-table th:nth-child(2),
         .profile-orders-table td:nth-child(2) {
-            width: 23%;
+            width: 21%;
         }
 
         .profile-orders-table th:nth-child(3),
         .profile-orders-table td:nth-child(3) {
-            width: 18%;
+            width: 17%;
         }
 
         .profile-orders-table th:nth-child(4),
@@ -68,14 +198,89 @@
 
         .profile-orders-table th:nth-child(5),
         .profile-orders-table td:nth-child(5) {
-            width: 24%;
+            width: 30%;
         }
 
-    .profile-orders-table td:last-child {
-        white-space: nowrap;
+.profile-order-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.profile-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 104px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    background: #f2f2f2;
+    color: #333;
+}
+
+    .profile-status.new {
+        background: #f3f3f3;
+        color: #222;
     }
 
-        .profile-orders-table td:last-child a {
-            display: inline-block;
-            margin-right: 8px;
-        }
+    .profile-status.confirmed,
+    .profile-status.processing {
+        background: #fff4d8;
+        color: #7a5200;
+    }
+
+    .profile-status.paid {
+        background: #e9f1ff;
+        color: #234f91;
+    }
+
+    .profile-status.shipped {
+        background: #e8f0f7;
+        color: #24516c;
+    }
+
+    .profile-status.delivered,
+    .profile-status.done {
+        background: #e8f5ec;
+        color: #236b3b;
+    }
+
+    .profile-status.cancelled {
+        background: #fde8e8;
+        color: #9b1c1c;
+    }
+
+    .profile-status.returned {
+        background: #fff0e3;
+        color: #9a4f00;
+    }
+
+.profile-empty {
+    min-height: 430px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.profile-empty-title {
+    color: #111;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    margin-bottom: 14px;
+}
+
+.profile-empty-text {
+    max-width: 520px;
+    color: #777;
+    font-size: 16px;
+    line-height: 1.6;
+}

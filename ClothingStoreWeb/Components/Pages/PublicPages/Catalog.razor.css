@@ -1,3 +1,7 @@
+.catalog-page {
+    padding-top: 28px;
+}
+
 .catalog-toolbar {
     display: flex;
     justify-content: space-between;
