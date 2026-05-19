@@ -14,6 +14,41 @@
     Выберите товар из каталога интернет-магазина одежды.
 </p>
 
+@if (categories.Count > 0)
+{
+    <div class="catalog-toolbar">
+        <div class="catalog-category-list">
+            <button type="button"
+                    class="catalog-category-button @(selectedCategoryId is null ? "active" : "")"
+                    @onclick="ShowAllCategories">
+                Смотреть все
+            </button>
+
+            @foreach (var category in categories)
+            {
+                <button type="button"
+                        class="catalog-category-button @(selectedCategoryId == category.Category_Id ? "active" : "")"
+                        @onclick="() => SelectCategory(category.Category_Id)">
+                    @category.Category_Name
+                </button>
+            }
+        </div>
+
+        <div class="catalog-sort">
+            <label for="sortSelect">Сортировка:</label>
+
+            <select id="sortSelect"
+                    class="catalog-sort-select"
+                    @bind="selectedSort"
+                    @bind:after="LoadProductsAsync">
+                <option value="default">По умолчанию</option>
+                <option value="priceAsc">Цена ниже</option>
+                <option value="priceDesc">Цена выше</option>
+            </select>
+        </div>
+    </div>
+}
+
 @if (products.Count == 0)
 {
     <p><em>Товары пока не добавлены.</em></p>
@@ -51,16 +86,70 @@ else
 
 @code {
     private List<Product> products = new();
+    private List<Category> categories = new();
+
+    private int? selectedCategoryId;
+    private string selectedSort = "default";
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadCategoriesAsync();
+        await LoadProductsAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
         await using var context = await DbFactory.CreateDbContextAsync();
 
-        products = await context.Products
-            .Include(product => product.Category)
+        categories = await context.Categories
             .AsNoTracking()
-            .OrderBy(product => product.Product_DisplayOrder)
-            .ThenBy(product => product.Product_Id)
+            .OrderBy(category => category.Category_Name)
             .ToListAsync();
+    }
+
+    private async Task LoadProductsAsync()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var query = context.Products
+            .Include(product => product.Category)
+            .AsNoTracking();
+
+        if (selectedCategoryId is not null)
+        {
+            query = query.Where(product => product.Category_Id == selectedCategoryId);
+        }
+
+        products = selectedSort switch
+        {
+            "priceAsc" => await query
+                .OrderBy(product => product.Product_Price)
+                .ThenBy(product => product.Product_DisplayOrder)
+                .ThenBy(product => product.Product_Id)
+                .ToListAsync(),
+
+            "priceDesc" => await query
+                .OrderByDescending(product => product.Product_Price)
+                .ThenBy(product => product.Product_DisplayOrder)
+                .ThenBy(product => product.Product_Id)
+                .ToListAsync(),
+
+            _ => await query
+                .OrderBy(product => product.Product_DisplayOrder)
+                .ThenBy(product => product.Product_Id)
+                .ToListAsync()
+        };
+    }
+
+    private async Task ShowAllCategories()
+    {
+        selectedCategoryId = null;
+        await LoadProductsAsync();
+    }
+
+    private async Task SelectCategory(int categoryId)
+    {
+        selectedCategoryId = categoryId;
+        await LoadProductsAsync();
     }
 }
