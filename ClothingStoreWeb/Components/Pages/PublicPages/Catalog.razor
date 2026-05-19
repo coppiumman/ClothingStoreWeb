@@ -4,7 +4,10 @@
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
+@using Microsoft.AspNetCore.WebUtilities
+@using System.Globalization
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
 
 <PageTitle>Каталог товаров</PageTitle>
 
@@ -34,32 +37,259 @@
             }
         </div>
 
-        <div class="catalog-sort">
-            <label for="sortSelect">Сортировка:</label>
+        <div class="catalog-actions">
+            <div class="catalog-sort-menu">
+                <button type="button"
+                        class="catalog-action-button"
+                        @onclick="ToggleSortMenu">
+                    Сортировка
+                </button>
 
-            <select id="sortSelect"
-                    class="catalog-sort-select"
-                    @bind="selectedSort"
-                    @bind:after="LoadProductsAsync">
-                <option value="default">По умолчанию</option>
-                <option value="priceAsc">Цена ниже</option>
-                <option value="priceDesc">Цена выше</option>
-            </select>
+                @if (isSortMenuOpen)
+                {
+                    <div class="catalog-sort-panel">
+                        <button type="button"
+                                class="catalog-sort-option @(selectedSort == "default" ? "active" : "")"
+                                @onclick='() => SelectSort("default")'>
+                            По умолчанию
+                        </button>
+
+                        <button type="button"
+                                class="catalog-sort-option @(selectedSort == "priceAsc" ? "active" : "")"
+                                @onclick='() => SelectSort("priceAsc")'>
+                            Цена ниже
+                        </button>
+
+                        <button type="button"
+                                class="catalog-sort-option @(selectedSort == "priceDesc" ? "active" : "")"
+                                @onclick='() => SelectSort("priceDesc")'>
+                            Цена выше
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <div class="catalog-filter-menu">
+                <button type="button"
+                        class="catalog-action-button catalog-filter-toggle"
+                        @onclick="ToggleFilterMenu">
+                    Фильтр
+
+                    @if (ActiveFilterCount > 0)
+                    {
+                        <span class="catalog-filter-count">@ActiveFilterCount</span>
+                    }
+                </button>
+
+                @if (isFilterMenuOpen)
+                {
+                    <div class="catalog-filter-panel">
+                        <div class="catalog-filter-group">
+                            <label class="catalog-filter-label">Цвет</label>
+
+                            <div class="catalog-color-dropdown">
+                                <button type="button"
+                                        class="catalog-color-dropdown-button"
+                                        @onclick="ToggleColorDropdown">
+                                    @GetColorDropdownText()
+                                    <span>▾</span>
+                                </button>
+
+                                @if (isColorDropdownOpen)
+                                {
+                                    <div class="catalog-color-dropdown-panel">
+                                        <button type="button"
+                                                class="catalog-color-clear"
+                                                @onclick="ClearDraftColors">
+                                            Все цвета
+                                        </button>
+
+                                        @foreach (var color in colors)
+                                        {
+                                            var isSelected = draftColors.Contains(color);
+                                            var isAvailable = !draftOnlyInStock || availableColors.Contains(color);
+
+                                            <label class="catalog-color-option @(!isAvailable ? "disabled" : "")">
+                                                <input type="checkbox"
+                                                       checked="@isSelected"
+                                                       disabled="@(!isAvailable)"
+                                                       @onchange="() => ToggleDraftColor(color)" />
+
+                                                <span>@color</span>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="catalog-filter-group">
+                            <label class="catalog-filter-label">Размер</label>
+
+                            <div class="catalog-size-options">
+                                @foreach (var size in sizes)
+                                {
+                                    var isSelected = draftSizeIds.Contains(size.Size_Id);
+                                    var isAvailable = !draftOnlyInStock || availableSizeIds.Contains(size.Size_Id);
+
+                                    <button type="button"
+                                            class="catalog-size-option @(isSelected ? "selected" : "") @(!isAvailable ? "disabled" : "")"
+                                            disabled="@(!isAvailable)"
+                                            @onclick="() => ToggleDraftSize(size.Size_Id)">
+                                        @size.Size_Name
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="catalog-filter-group">
+                            <label class="catalog-stock-filter">
+                                <input type="checkbox"
+                                       checked="@draftOnlyInStock"
+                                       @onchange="ToggleDraftOnlyInStock" />
+
+                                <span>Только товары в наличии</span>
+                            </label>
+                        </div>
+
+                        <div class="catalog-filter-group">
+                            <label class="catalog-filter-label">Цена от</label>
+                            <input type="number"
+                                   class="catalog-filter-input"
+                                   value="@draftMinPrice"
+                                   @onchange="ChangeDraftMinPrice"
+                                   min="0" />
+                        </div>
+
+                        <div class="catalog-filter-group">
+                            <label class="catalog-filter-label">Цена до</label>
+                            <input type="number"
+                                   class="catalog-filter-input"
+                                   value="@draftMaxPrice"
+                                   @onchange="ChangeDraftMaxPrice"
+                                   min="0" />
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(filterErrorMessage))
+                        {
+                            <div class="catalog-filter-error">
+                                @filterErrorMessage
+                            </div>
+                        }
+
+                        <div class="catalog-filter-buttons">
+                            <button type="button"
+                                    class="catalog-filter-apply"
+                                    @onclick="ApplyFilters">
+                                Применить
+                            </button>
+
+                            <button type="button"
+                                    class="catalog-filter-reset"
+                                    @onclick="ResetFilters">
+                                Сбросить
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
         </div>
+    </div>
+
+}
+
+@if (ActiveFilterCount > 0)
+{
+    <div class="catalog-active-filters">
+        <span class="catalog-active-filters-title">Активные:</span>
+
+        @foreach (var color in selectedColors.OrderBy(color => color))
+        {
+            <button type="button"
+                    class="catalog-filter-tag"
+                    @onclick="() => ClearColorFilter(color)">
+                Цвет: @color
+                <span>×</span>
+            </button>
+        }
+
+        @foreach (var sizeId in selectedSizeIds.OrderBy(GetSizeSortOrderById))
+        {
+            var selectedSize = sizes.FirstOrDefault(size => size.Size_Id == sizeId);
+
+            if (selectedSize is not null)
+            {
+                <button type="button"
+                        class="catalog-filter-tag"
+                        @onclick="() => ClearSizeFilter(sizeId)">
+                    Размер: @selectedSize.Size_Name
+                    <span>×</span>
+                </button>
+            }
+        }
+
+        @if (onlyInStock)
+        {
+            <button type="button"
+                    class="catalog-filter-tag"
+                    @onclick="ClearOnlyInStockFilter">
+                В наличии
+                <span>×</span>
+            </button>
+        }
+
+        @if (minPrice.HasValue)
+        {
+            <button type="button"
+                    class="catalog-filter-tag"
+                    @onclick="ClearMinPriceFilter">
+                Цена: от @FormatPrice(minPrice.Value)
+                <span>×</span>
+            </button>
+        }
+
+        @if (maxPrice.HasValue)
+        {
+            <button type="button"
+                    class="catalog-filter-tag"
+                    @onclick="ClearMaxPriceFilter">
+                Цена: до @FormatPrice(maxPrice.Value)
+                <span>×</span>
+            </button>
+        }
+
+        <button type="button"
+                class="catalog-clear-all-filters"
+                @onclick="ResetFilters">
+            Сбросить всё
+        </button>
     </div>
 }
 
 @if (products.Count == 0)
 {
-    <p><em>Товары пока не добавлены.</em></p>
-}
-else
-{
+    @if (HasCatalogRestrictions)
+        {
+        <div class="catalog-empty-state">
+            <div class="catalog-empty-title">Ничего не найдено</div>
+            <div class="catalog-empty-subtitle">Попробуйте изменить параметры фильтра</div>
+        </div>
+        }
+    else
+        {
+        <div class="catalog-empty-state">
+            <div class="catalog-empty-title">Товары пока не добавлены</div>
+        </div>
+        }
+    }
+    else
+    {
     <div class="catalog-grid">
         @foreach (var product in products)
         {
             <div class="catalog-card">
-                <a href="@($"/catalog/product/{product.Product_Id}")" class="catalog-image-link">
+                <a href="@($"/catalog/product/{product.Product_Id}?returnUrl={Uri.EscapeDataString(GetCurrentCatalogUrl())}")"
+                   class="catalog-image-link">
                     <div class="catalog-image">
                         @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
                         {
@@ -91,9 +321,201 @@ else
     private int? selectedCategoryId;
     private string selectedSort = "default";
 
+    private bool isSortMenuOpen;
+    private bool isFilterMenuOpen;
+    private bool isColorDropdownOpen;
+
+    private List<string> colors = new();
+    private HashSet<string> availableColors = new(StringComparer.OrdinalIgnoreCase);
+    private List<Size> sizes = new();
+    private HashSet<int> availableSizeIds = new();
+
+    private HashSet<string> selectedColors = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<int> selectedSizeIds = new();
+    private decimal? minPrice;
+    private decimal? maxPrice;
+    private bool onlyInStock;
+    private bool draftOnlyInStock;
+
+    private HashSet<string> draftColors = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<int> draftSizeIds = new();
+    private decimal? draftMinPrice;
+    private decimal? draftMaxPrice;
+
+    private string? filterErrorMessage;
+    
+    private int ActiveFilterCount
+    {
+        get
+        {
+            var count = 0;
+
+            count += selectedColors.Count;
+            count += selectedSizeIds.Count;
+            if (minPrice.HasValue)
+            {
+                count++;
+            }
+            if (maxPrice.HasValue)
+            {
+                count++;
+            }
+            if (onlyInStock)
+            {
+                count++;
+            }
+
+            return count;
+        }
+    }
+
+    private bool HasCatalogRestrictions =>
+        selectedCategoryId is not null || ActiveFilterCount > 0;
+
+    private string FormatPrice(decimal price)
+    {
+        return price.ToString("N0") + " ₽";
+    }
+
+    private void LoadCatalogStateFromQuery()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("category", out var categoryValue) &&
+            int.TryParse(categoryValue.ToString(), out var categoryId))
+        {
+            selectedCategoryId = categoryId;
+        }
+
+        if (query.TryGetValue("sort", out var sortValue))
+        {
+            var sort = sortValue.ToString();
+
+            if (sort == "priceAsc" || sort == "priceDesc")
+            {
+                selectedSort = sort;
+            }
+        }
+
+        if (query.TryGetValue("colors", out var colorsValue))
+        {
+            selectedColors = colorsValue.ToString()
+                .Split('|', StringSplitOptions.RemoveEmptyEntries)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+        else if (query.TryGetValue("color", out var colorValue))
+        {
+            var color = colorValue.ToString();
+
+            if (!string.IsNullOrWhiteSpace(color))
+            {
+                selectedColors.Add(color);
+            }
+        }
+
+        if (query.TryGetValue("sizes", out var sizesValue))
+        {
+            selectedSizeIds = sizesValue.ToString()
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(value => int.TryParse(value, out var sizeId) ? sizeId : (int?)null)
+                .Where(sizeId => sizeId is not null)
+                .Select(sizeId => sizeId!.Value)
+                .ToHashSet();
+        }
+
+        if (query.TryGetValue("minPrice", out var minPriceValue) &&
+            decimal.TryParse(minPriceValue.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMinPrice))
+        {
+            minPrice = parsedMinPrice;
+        }
+
+        if (query.TryGetValue("maxPrice", out var maxPriceValue) &&
+            decimal.TryParse(maxPriceValue.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedMaxPrice))
+        {
+            maxPrice = parsedMaxPrice;
+        }
+
+        if (query.TryGetValue("stock", out var stockValue))
+        {
+            onlyInStock = stockValue.ToString() == "1";
+        }
+
+        draftColors = new HashSet<string>(selectedColors, StringComparer.OrdinalIgnoreCase);
+        draftSizeIds = new HashSet<int>(selectedSizeIds);
+        draftMinPrice = minPrice;
+        draftMaxPrice = maxPrice;
+        draftOnlyInStock = onlyInStock;
+    }
+
+    private void UpdateCatalogUrl()
+    {
+        var query = new Dictionary<string, string?>();
+
+        if (selectedCategoryId is not null)
+        {
+            query["category"] = selectedCategoryId.Value.ToString();
+        }
+
+        if (selectedSort != "default")
+        {
+            query["sort"] = selectedSort;
+        }
+
+        if (selectedColors.Count > 0)
+        {
+            query["colors"] = string.Join("|", selectedColors.OrderBy(color => color));
+        }
+
+        if (selectedSizeIds.Count > 0)
+        {
+            query["sizes"] = string.Join(",", selectedSizeIds.OrderBy(GetSizeSortOrderById));
+        }
+
+        if (minPrice is not null)
+        {
+            query["minPrice"] = minPrice.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (maxPrice is not null)
+        {
+            query["maxPrice"] = maxPrice.Value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (onlyInStock)
+        {
+            query["stock"] = "1";
+        }
+
+        var url = query.Count == 0
+            ? "/catalog"
+            : QueryHelpers.AddQueryString("/catalog", query);
+
+        NavigationManager.NavigateTo(url, replace: true);
+    }
+
+    private string GetCurrentCatalogUrl()
+    {
+        var relativeUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+
+        if (string.IsNullOrWhiteSpace(relativeUrl))
+        {
+            return "/catalog";
+        }
+
+        return "/" + relativeUrl;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadCategoriesAsync();
+        await LoadColorsAsync();
+        await LoadSizesAsync();
+
+        LoadCatalogStateFromQuery();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
         await LoadProductsAsync();
     }
 
@@ -107,6 +529,144 @@ else
             .ToListAsync();
     }
 
+    private async Task LoadColorsAsync()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        colors = await context.Products
+            .AsNoTracking()
+            .Where(product => product.Product_Coloring != null && product.Product_Coloring != "")
+            .Select(product => product.Product_Coloring!)
+            .Distinct()
+            .OrderBy(color => color)
+            .ToListAsync();
+    }
+
+    private async Task LoadAvailableColorsAsync(bool useDraftFilters = false)
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var sizeIdsForColors = useDraftFilters ? draftSizeIds : selectedSizeIds;
+        var minPriceForColors = useDraftFilters ? draftMinPrice : minPrice;
+        var maxPriceForColors = useDraftFilters ? draftMaxPrice : maxPrice;
+
+        var query = context.Stocks
+            .Include(stock => stock.Product)
+            .AsNoTracking()
+            .Where(stock => stock.Stock_Quantity > 0 && stock.Product != null)
+            .AsQueryable();
+
+        if (selectedCategoryId is not null)
+        {
+            query = query.Where(stock => stock.Product!.Category_Id == selectedCategoryId);
+        }
+
+        if (sizeIdsForColors.Count > 0)
+        {
+            query = query.Where(stock => sizeIdsForColors.Contains(stock.Size_Id));
+        }
+
+        if (minPriceForColors is not null)
+        {
+            query = query.Where(stock => stock.Product!.Product_Price >= minPriceForColors);
+        }
+
+        if (maxPriceForColors is not null)
+        {
+            query = query.Where(stock => stock.Product!.Product_Price <= maxPriceForColors);
+        }
+
+        var colorList = await query
+            .Select(stock => stock.Product!.Product_Coloring)
+            .Where(color => color != null && color != "")
+            .Select(color => color!)
+            .Distinct()
+            .ToListAsync();
+
+        availableColors = colorList
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private async Task LoadSizesAsync()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        sizes = await context.Sizes
+            .AsNoTracking()
+            .ToListAsync();
+
+        sizes = sizes
+            .OrderBy(GetSizeSortOrder)
+            .ThenBy(size => size.Size_Name)
+            .ToList();
+    }
+
+    private async Task LoadAvailableSizesAsync(bool useDraftFilters = false)
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var colorsForSizes = useDraftFilters ? draftColors : selectedColors;
+        var minPriceForSizes = useDraftFilters ? draftMinPrice : minPrice;
+        var maxPriceForSizes = useDraftFilters ? draftMaxPrice : maxPrice;
+
+        var query = context.Stocks
+            .Include(stock => stock.Product)
+            .AsNoTracking()
+            .Where(stock => stock.Stock_Quantity > 0 && stock.Product != null)
+            .AsQueryable();
+
+        if (selectedCategoryId is not null)
+        {
+            query = query.Where(stock => stock.Product!.Category_Id == selectedCategoryId);
+        }
+
+        if (colorsForSizes.Count > 0)
+        {
+            query = query.Where(stock =>
+                stock.Product!.Product_Coloring != null &&
+                colorsForSizes.Contains(stock.Product.Product_Coloring));
+        }
+
+        if (minPriceForSizes is not null)
+        {
+            query = query.Where(stock => stock.Product!.Product_Price >= minPriceForSizes);
+        }
+
+        if (maxPriceForSizes is not null)
+        {
+            query = query.Where(stock => stock.Product!.Product_Price <= maxPriceForSizes);
+        }
+
+        var sizeIds = await query
+            .Select(stock => stock.Size_Id)
+            .Distinct()
+            .ToListAsync();
+
+        availableSizeIds = sizeIds.ToHashSet();
+    }
+
+    private int GetSizeSortOrder(Size size)
+    {
+        if (int.TryParse(size.Size_Name, out var number))
+        {
+            return number;
+        }
+
+        return 1000;
+    }
+
+    private int GetSizeSortOrderById(int sizeId)
+    {
+        var size = sizes.FirstOrDefault(size => size.Size_Id == sizeId);
+
+        if (size is null)
+        {
+            return 1000;
+        }
+
+        return GetSizeSortOrder(size);
+    }
+
     private async Task LoadProductsAsync()
     {
         await using var context = await DbFactory.CreateDbContextAsync();
@@ -118,6 +678,37 @@ else
         if (selectedCategoryId is not null)
         {
             query = query.Where(product => product.Category_Id == selectedCategoryId);
+        }
+
+        if (selectedColors.Count > 0)
+        {
+            query = query.Where(product =>
+                product.Product_Coloring != null &&
+                selectedColors.Contains(product.Product_Coloring));
+        }
+
+        if (selectedSizeIds.Count > 0)
+        {
+            query = query.Where(product =>
+                product.Stocks.Any(stock =>
+                    selectedSizeIds.Contains(stock.Size_Id) &&
+                    stock.Stock_Quantity > 0));
+        }
+
+        if (minPrice is not null)
+        {
+            query = query.Where(product => product.Product_Price >= minPrice);
+        }
+
+        if (maxPrice is not null)
+        {
+            query = query.Where(product => product.Product_Price <= maxPrice);
+        }
+
+        if (onlyInStock)
+        {
+            query = query.Where(product =>
+                product.Stocks.Any(stock => stock.Stock_Quantity > 0));
         }
 
         products = selectedSort switch
@@ -144,12 +735,298 @@ else
     private async Task ShowAllCategories()
     {
         selectedCategoryId = null;
+
+        UpdateCatalogUrl();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
         await LoadProductsAsync();
     }
 
     private async Task SelectCategory(int categoryId)
     {
         selectedCategoryId = categoryId;
+
+        UpdateCatalogUrl();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
+        await LoadProductsAsync();
+    }
+
+    private void ToggleSortMenu()
+    {
+        isSortMenuOpen = !isSortMenuOpen;
+
+        if (isSortMenuOpen)
+        {
+            isFilterMenuOpen = false;
+        }
+    }
+
+    private async Task SelectSort(string sortType)
+    {
+        selectedSort = sortType;
+        isSortMenuOpen = false;
+
+        UpdateCatalogUrl();
+
+        await LoadProductsAsync();
+    }
+
+    private void ToggleFilterMenu()
+    {
+        isFilterMenuOpen = !isFilterMenuOpen;
+
+        if (isFilterMenuOpen)
+        {
+            isSortMenuOpen = false;
+            filterErrorMessage = null;
+
+            draftColors = new HashSet<string>(selectedColors, StringComparer.OrdinalIgnoreCase);
+            draftSizeIds = new HashSet<int>(selectedSizeIds);
+            draftMinPrice = minPrice;
+            draftMaxPrice = maxPrice;
+            draftOnlyInStock = onlyInStock;
+            isColorDropdownOpen = false;
+
+            _ = RefreshDraftFilterAvailabilityAsync();
+        }
+    }
+
+    private async Task ToggleDraftSize(int sizeId)
+    {
+        if (draftSizeIds.Contains(sizeId))
+        {
+            draftSizeIds.Remove(sizeId);
+        }
+        else
+        {
+            draftSizeIds.Add(sizeId);
+        }
+
+        filterErrorMessage = null;
+
+        await RefreshDraftFilterAvailabilityAsync();
+    }
+
+    private void ToggleColorDropdown()
+    {
+        isColorDropdownOpen = !isColorDropdownOpen;
+    }
+
+    private string GetColorDropdownText()
+    {
+        if (draftColors.Count == 0)
+        {
+            return "Все цвета";
+        }
+
+        if (draftColors.Count == 1)
+        {
+            return draftColors.First();
+        }
+
+        return $"Выбрано: {draftColors.Count}";
+    }
+
+    private async Task ToggleDraftColor(string color)
+    {
+        if (draftColors.Contains(color))
+        {
+            draftColors.Remove(color);
+        }
+        else
+        {
+            draftColors.Add(color);
+        }
+
+        filterErrorMessage = null;
+
+        await RefreshDraftFilterAvailabilityAsync();
+    }
+
+    private async Task ClearDraftColors()
+    {
+        draftColors.Clear();
+        filterErrorMessage = null;
+
+        await RefreshDraftFilterAvailabilityAsync();
+    }
+
+    private async Task ChangeDraftMinPrice(ChangeEventArgs e)
+    {
+        draftMinPrice = TryParseDecimal(e.Value);
+        filterErrorMessage = null;
+
+        await RefreshDraftFilterAvailabilityAsync();
+    }
+
+    private async Task ChangeDraftMaxPrice(ChangeEventArgs e)
+    {
+        draftMaxPrice = TryParseDecimal(e.Value);
+        filterErrorMessage = null;
+
+        await RefreshDraftFilterAvailabilityAsync();
+    }
+
+    private decimal? TryParseDecimal(object? value)
+    {
+        var text = value?.ToString();
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        if (decimal.TryParse(text, out var result))
+        {
+            return result;
+        }
+
+        return null;
+    }
+
+    private async Task RefreshDraftFilterAvailabilityAsync()
+    {
+        await LoadAvailableColorsAsync(useDraftFilters: true);
+
+        if (draftOnlyInStock)
+        {
+            draftColors.RemoveWhere(color => !availableColors.Contains(color));
+        }
+
+        await LoadAvailableSizesAsync(useDraftFilters: true);
+
+        if (draftOnlyInStock)
+        {
+            draftSizeIds.RemoveWhere(sizeId => !availableSizeIds.Contains(sizeId));
+        }
+
+        await LoadAvailableColorsAsync(useDraftFilters: true);
+    }
+
+    private async Task ToggleDraftOnlyInStock(ChangeEventArgs e)
+    {
+        draftOnlyInStock = e.Value is bool value && value;
+        filterErrorMessage = null;
+
+        await RefreshDraftFilterAvailabilityAsync();
+    }
+
+    private async Task ApplyFilters()
+    {
+        filterErrorMessage = null;
+
+        if (draftMinPrice is not null && draftMaxPrice is not null && draftMinPrice > draftMaxPrice)
+        {
+            filterErrorMessage = "Минимальная цена не может быть больше максимальной.";
+            return;
+        }
+
+        selectedColors = new HashSet<string>(draftColors, StringComparer.OrdinalIgnoreCase);
+        selectedSizeIds = new HashSet<int>(draftSizeIds);
+        minPrice = draftMinPrice;
+        maxPrice = draftMaxPrice;
+        onlyInStock = draftOnlyInStock;
+
+        isFilterMenuOpen = false;
+
+        UpdateCatalogUrl();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
+        await LoadProductsAsync();
+    }
+
+    private async Task ResetFilters()
+    {
+        selectedColors.Clear();
+        selectedSizeIds.Clear();
+        minPrice = null;
+        maxPrice = null;
+        onlyInStock = false;
+        draftOnlyInStock = false;
+
+        draftColors.Clear();
+        isColorDropdownOpen = false;
+        draftSizeIds.Clear();
+        draftMinPrice = null;
+        draftMaxPrice = null;
+        draftOnlyInStock = false;
+
+        filterErrorMessage = null;
+        isFilterMenuOpen = false;
+
+        UpdateCatalogUrl();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
+        await LoadProductsAsync();
+    }
+
+    private async Task ClearColorFilter(string color)
+    {
+        selectedColors.Remove(color);
+        draftColors.Remove(color);
+        filterErrorMessage = null;
+
+        UpdateCatalogUrl();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
+        await LoadProductsAsync();
+    }
+
+    private async Task ClearMinPriceFilter()
+    {
+        minPrice = null;
+        draftMinPrice = null;
+        filterErrorMessage = null;
+
+        UpdateCatalogUrl();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
+        await LoadProductsAsync();
+    }
+
+    private async Task ClearMaxPriceFilter()
+    {
+        maxPrice = null;
+        draftMaxPrice = null;
+        filterErrorMessage = null;
+
+        UpdateCatalogUrl();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
+        await LoadProductsAsync();
+    }
+
+    private async Task ClearSizeFilter(int sizeId)
+    {
+        selectedSizeIds.Remove(sizeId);
+        draftSizeIds.Remove(sizeId);
+        filterErrorMessage = null;
+
+        UpdateCatalogUrl();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
+        await LoadProductsAsync();
+    }
+
+    private async Task ClearOnlyInStockFilter()
+    {
+        onlyInStock = false;
+        draftOnlyInStock = false;
+        filterErrorMessage = null;
+
+        UpdateCatalogUrl();
+
+        await LoadAvailableColorsAsync();
+        await LoadAvailableSizesAsync();
         await LoadProductsAsync();
     }
 }

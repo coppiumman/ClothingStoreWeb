@@ -182,7 +182,7 @@ else
                     Добавить в корзину
                 </button>
 
-                <a href="/catalog">Вернуться в каталог</a>
+                <a href="@GetReturnCatalogUrl()">Вернуться в каталог</a>
             </div>
         </div>
     </div>
@@ -191,6 +191,9 @@ else
 @code {
     [Parameter]
     public int ProductId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
 
     private Product? product;
     private List<Stock> stocks = new();
@@ -233,6 +236,18 @@ else
             .Where(stock => stock.Product_Id == ProductId && stock.Stock_Quantity > 0)
             .OrderBy(stock => stock.Size!.Size_Name)
             .ToListAsync();
+    }
+
+    private string GetReturnCatalogUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(ReturnUrl) &&
+            ReturnUrl.StartsWith("/") &&
+            !ReturnUrl.StartsWith("//"))
+        {
+            return ReturnUrl;
+        }
+
+        return "/catalog";
     }
 
     private async Task AddToCart()
