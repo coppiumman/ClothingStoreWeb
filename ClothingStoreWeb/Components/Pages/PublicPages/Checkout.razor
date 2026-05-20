@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
 
 @attribute [Authorize]
 
@@ -14,80 +15,510 @@
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
+@inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>Оформление заказа</PageTitle>
 
-<h1>Оформление заказа</h1>
+<div class="checkout-page">
+    <h1>Оформление заказа</h1>
 
-<p>
-    Проверьте состав заказа перед подтверждением.
-</p>
-
-@if (!CartService.Items.Any())
-{
-    <div class="checkout-empty">
-        <h3>Корзина пуста</h3>
-        <p>Для оформления заказа сначала добавьте товары в корзину.</p>
-
-        <a class="btn btn-primary" href="/catalog">
-            Перейти в каталог
-        </a>
-    </div>
-}
-else
-{
-    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    @if (!CartService.Items.Any())
     {
-        <div class="alert alert-danger">
-            @errorMessage
+        <div class="checkout-empty">
+            <h2>Корзина пуста</h2>
+            <p>Для оформления заказа сначала добавьте товары в корзину.</p>
+
+            <a class="checkout-button checkout-button-primary" href="/catalog">
+                Перейти в каталог
+            </a>
+        </div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="checkout-error">
+                @errorMessage
+            </div>
+        }
+
+        <div class="checkout-layout">
+            <section class="checkout-form-section">
+                <h2>Данные получателя</h2>
+
+                <div class="checkout-form">
+                    <div class="checkout-field">
+                        <label>ФИО</label>
+
+                        <input type="text"
+                               class="checkout-input @(recipientNameError is not null ? "checkout-input-error" : null)"
+                               @bind:get="recipientName"
+                               @bind:set="SetRecipientName"
+                               @bind:event="oninput"
+                               placeholder="Введите ФИО получателя" />
+
+                        @if (recipientNameError is not null)
+                        {
+                            <div class="checkout-field-error">@recipientNameError</div>
+                        }
+                    </div>
+
+                    <div class="checkout-field">
+                        <label>Телефон</label>
+
+                        <div class="checkout-phone-row">
+                            <select class="checkout-phone-code"
+                                    value="@selectedPhoneCode"
+                                    @onchange="OnPhoneCodeChanged">
+                                @foreach (var option in phoneCodeOptions)
+                                {
+                                    <option value="@option.Code">@option.Code</option>
+                                }
+                            </select>
+
+                            <input type="text"
+                                   class="checkout-input @(recipientPhoneError is not null ? "checkout-input-error" : null)"
+                                   value="@recipientPhone"
+                                   @oninput="OnPhoneInput"
+                                   placeholder="@CurrentPhoneOption.Example.Replace(selectedPhoneCode, "").Trim()" />
+                        </div>
+
+                        <div class="checkout-field-hint">
+                            Пример: @CurrentPhoneOption.Example
+                        </div>
+
+                        @if (recipientPhoneError is not null)
+                        {
+                            <div class="checkout-field-error">@recipientPhoneError</div>
+                        }
+                    </div>
+
+                    <div class="checkout-field">
+                        <label>Email</label>
+
+                        <input type="email"
+                               class="checkout-input @(recipientEmailError is not null ? "checkout-input-error" : null)"
+                               @bind="recipientEmail"
+                               placeholder="example@mail.ru" />
+
+                        @if (recipientEmailError is not null)
+                        {
+                            <div class="checkout-field-error">@recipientEmailError</div>
+                        }
+                    </div>
+
+                    <div class="checkout-field">
+                        <label>Способ доставки</label>
+
+                        <div class="checkout-radio-group">
+                            <label class="checkout-radio">
+                                <input type="radio"
+                                       name="delivery"
+                                       value="pickup"
+                                       @onchange="OnDeliveryMethodChanged"
+                                       checked="@(deliveryMethod == "pickup")" />
+                                <span>Самовывоз</span>
+                            </label>
+
+                            <label class="checkout-radio">
+                                <input type="radio"
+                                       name="delivery"
+                                       value="courier"
+                                       @onchange="OnDeliveryMethodChanged"
+                                       checked="@(deliveryMethod == "courier")" />
+                                <span>Курьерская доставка</span>
+                            </label>
+
+                            <label class="checkout-radio">
+                                <input type="radio"
+                                       name="delivery"
+                                       value="point"
+                                       @onchange="OnDeliveryMethodChanged"
+                                       checked="@(deliveryMethod == "point")" />
+                                <span>Пункт выдачи</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    @if (deliveryMethod == "pickup")
+                    {
+                        <div class="checkout-delivery-box">
+                            <div class="checkout-delivery-title">Самовывоз из магазина</div>
+                            <div class="checkout-delivery-text">
+                                г. Москва, ул. Центральная, д. 10
+                            </div>
+                        </div>
+                    }
+                    else if (deliveryMethod == "point")
+                    {
+                        <div class="checkout-delivery-box">
+                            <div class="checkout-delivery-title">Пункт выдачи</div>
+
+                            @if (string.IsNullOrWhiteSpace(deliveryAddress))
+                            {
+                                <div class="checkout-delivery-text">
+                                    Пункт выдачи пока не выбран.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="checkout-delivery-text">
+                                    @deliveryAddress
+                                </div>
+                            }
+
+                            <button type="button"
+                                    class="checkout-small-button"
+                                    @onclick="OpenPickupPointModal">
+                                Выбрать пункт выдачи
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="checkout-field">
+                            <label>Адрес доставки</label>
+                            <input type="text"
+                                   class="checkout-input @(deliveryAddressError is not null ? "checkout-input-error" : null)"
+                                   @bind="deliveryAddress"
+                                   placeholder="Введите адрес доставки" />
+
+                            @if (deliveryAddressError is not null)
+                            {
+                                <div class="checkout-field-error">@deliveryAddressError</div>
+                            }
+                        </div>
+                    }
+
+                    <div class="checkout-field">
+                        <label>Комментарий к заказу</label>
+                        <textarea class="checkout-textarea"
+                                  @bind="orderComment"
+                                  placeholder="Комментарий для менеджера или курьера"></textarea>
+                    </div>
+
+                    <div class="checkout-field">
+                        <label>Способ оплаты</label>
+
+                        <div class="checkout-radio-group">
+                            <label class="checkout-radio">
+                                <input type="radio"
+                                       name="payment"
+                                       value="cash"
+                                       @onchange="OnPaymentMethodChanged"
+                                       checked="@(paymentMethod == "cash")" />
+                                <span>Оплата при получении</span>
+                            </label>
+
+                            <label class="checkout-radio">
+                                <input type="radio"
+                                       name="payment"
+                                       value="card"
+                                       @onchange="OnPaymentMethodChanged"
+                                       checked="@(paymentMethod == "card")" />
+                                <span>Банковской картой при получении</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <label class="checkout-agreement @(agreementError is not null ? "checkout-agreement-error" : null)">
+                        <input type="checkbox" @bind="isAgreementAccepted" />
+                        <span>Я согласен на обработку персональных данных</span>
+                    </label>
+
+                    @if (agreementError is not null)
+                    {
+                        <div class="checkout-field-error">@agreementError</div>
+                    }
+                </div>
+            </section>
+
+            <aside class="checkout-summary">
+                <h2>Ваш заказ</h2>
+
+                <div class="checkout-items">
+                    @foreach (var item in CartService.Items)
+                    {
+                        <div class="checkout-item">
+                            <div>
+                                <div class="checkout-item-name">@item.Product_Name</div>
+                                <div class="checkout-item-meta">
+                                    Размер @item.Size_Name · @item.Quantity шт.
+                                </div>
+                            </div>
+
+                            <div class="checkout-item-price">
+                                @item.TotalPrice.ToString("N2") ₽
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="checkout-summary-row">
+                    <span>Товаров</span>
+                    <strong>@GetTotalQuantity()</strong>
+                </div>
+
+                <div class="checkout-summary-row">
+                    <span>Сумма</span>
+                    <strong>@CartService.GetTotalPrice().ToString("N2") ₽</strong>
+                </div>
+
+                <div class="checkout-summary-row">
+                    <span>Доставка</span>
+                    <strong>@GetDeliveryPriceText()</strong>
+                </div>
+
+                <div class="checkout-summary-total">
+                    <span>Итого</span>
+                    <strong>@GetFinalTotal().ToString("N2") ₽</strong>
+                </div>
+
+                <button type="button"
+                        class="checkout-button checkout-button-primary"
+                        disabled="@isProcessing"
+                        @onclick="CreateOrderAsync">
+                    @(isProcessing ? "Оформление..." : "Оформить заказ")
+                </button>
+
+                <a class="checkout-button checkout-button-secondary" href="/cart">
+                    Вернуться в корзину
+                </a>
+            </aside>
         </div>
     }
 
-    <table class="checkout-table">
-        <thead>
-            <tr>
-                <th>Товар</th>
-                <th>Размер</th>
-                <th>Цена</th>
-                <th>Количество</th>
-                <th>Сумма</th>
-            </tr>
-        </thead>
+    @if (isPickupPointModalOpen)
+    {
+        <div class="checkout-modal-backdrop">
+            <div class="checkout-modal">
+                <button type="button"
+                        class="checkout-modal-close"
+                        @onclick="ClosePickupPointModal">
+                    ×
+                </button>
 
-        <tbody>
-            @foreach (var item in CartService.Items)
-            {
-                <tr>
-                    <td>@item.Product_Name</td>
-                    <td>@item.Size_Name</td>
-                    <td>@item.Product_Price.ToString("N2") ₽</td>
-                    <td>@item.Quantity</td>
-                    <td>@item.TotalPrice.ToString("N2") ₽</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                <h2>Выбор пункта выдачи</h2>
 
-    <div class="checkout-summary">
-        <p>
-            <strong>Итого:</strong>
-            @CartService.GetTotalPrice().ToString("N2") ₽
-        </p>
+                <div class="checkout-points">
+                    @foreach (var point in pickupPoints)
+                    {
+                        <button type="button"
+                                class="checkout-point"
+                                @onclick="() => SelectPickupPoint(point)">
+                            <span>@point.Name</span>
+                            <small>@point.Address</small>
+                        </button>
+                    }
+                </div>
 
-        <button class="btn btn-primary"
-                disabled="@isProcessing"
-                @onclick="CreateOrderAsync">
-            @(isProcessing ? "Оформление..." : "Подтвердить заказ")
-        </button>
-
-        <a class="btn btn-outline-secondary" href="/cart">
-            Вернуться в корзину
-        </a>
-    </div>
+                <div class="checkout-modal-actions">
+                    <button type="button"
+                            class="checkout-button checkout-button-secondary"
+                            @onclick="ClosePickupPointModal">
+                        Отмена
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
 
 @code {
     private string? errorMessage;
     private bool isProcessing;
+
+    private string? recipientName;
+    private string? recipientPhone;
+    private string? recipientEmail;
+
+    private string deliveryMethod = "pickup";
+    private string? deliveryAddress = "г. Москва, ул. Центральная, д. 10";
+    private string paymentMethod = "cash";
+    private string? orderComment;
+    private bool isAgreementAccepted;
+    private bool isPickupPointModalOpen;
+
+    private string selectedPhoneCode = "+7";
+    private string? recipientPhoneError;
+    private string? recipientNameError;
+    private string? recipientEmailError;
+    private string? deliveryAddressError;
+    private string? agreementError;
+
+    private readonly List<PickupPoint> pickupPoints =
+    [
+        new PickupPoint("Пункт выдачи №1", "г. Москва, ул. Центральная, д. 10"),
+        new PickupPoint("Пункт выдачи №2", "г. Москва, ул. Тверская, д. 15"),
+        new PickupPoint("Пункт выдачи №3", "г. Москва, Ленинский проспект, д. 25")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CartService.LoadCartAsync();
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var claimsUser = authState.User;
+
+        var userId = claimsUser.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            NavigationManager.NavigateTo("/Account/Login");
+            return;
+        }
+
+        var appUser = await UserManager.FindByIdAsync(userId);
+
+        if (appUser is not null)
+        {
+            recipientEmail = appUser.Email;
+            recipientPhone = ParsePhoneLocalPart(appUser.PhoneNumber);
+            selectedPhoneCode = ParsePhoneCode(appUser.PhoneNumber);
+
+            recipientName = appUser.UserFullName;
+        }
+    }
+
+    private void OnDeliveryMethodChanged(ChangeEventArgs e)
+    {
+        deliveryMethod = e.Value?.ToString() ?? "pickup";
+
+        if (deliveryMethod == "pickup")
+        {
+            deliveryAddress = "г. Москва, ул. Центральная, д. 10";
+        }
+        else if (deliveryMethod == "point")
+        {
+            deliveryAddress = null;
+        }
+        else
+        {
+            deliveryAddress = null;
+        }
+    }
+
+    private void OnPaymentMethodChanged(ChangeEventArgs e)
+    {
+        paymentMethod = e.Value?.ToString() ?? "cash";
+    }
+
+    private void OpenPickupPointModal()
+    {
+        isPickupPointModalOpen = true;
+    }
+
+    private void ClosePickupPointModal()
+    {
+        isPickupPointModalOpen = false;
+    }
+
+    private void SelectPickupPoint(PickupPoint point)
+    {
+        deliveryAddress = point.Address;
+        isPickupPointModalOpen = false;
+    }
+
+    private int GetTotalQuantity()
+    {
+        return CartService.Items.Sum(item => item.Quantity);
+    }
+
+    private decimal GetDeliveryPrice()
+    {
+        return deliveryMethod switch
+        {
+            "courier" => 300,
+            _ => 0
+        };
+    }
+
+    private string GetDeliveryPriceText()
+    {
+        var deliveryPrice = GetDeliveryPrice();
+
+        return deliveryPrice == 0
+            ? "Бесплатно"
+            : $"{deliveryPrice:N2} ₽";
+    }
+
+    private decimal GetFinalTotal()
+    {
+        return CartService.GetTotalPrice() + GetDeliveryPrice();
+    }
+
+    private bool ValidateCheckoutForm()
+    {
+        errorMessage = null;
+
+        recipientNameError = null;
+        recipientPhoneError = null;
+        recipientEmailError = null;
+        deliveryAddressError = null;
+        agreementError = null;
+
+        var isValid = true;
+
+        if (string.IsNullOrWhiteSpace(recipientName))
+        {
+            recipientNameError = "Введите ФИО получателя.";
+            isValid = false;
+        }
+        else if (recipientName.Any(ch => !char.IsLetter(ch) && ch != ' ' && ch != '-'))
+        {
+            recipientNameError = "ФИО должно содержать только буквы, пробелы и дефис.";
+            isValid = false;
+        }
+
+        var phoneDigits = GetOnlyDigits(recipientPhone);
+
+        if (string.IsNullOrWhiteSpace(phoneDigits))
+        {
+            recipientPhoneError = "Введите номер телефона.";
+            isValid = false;
+        }
+        else if (phoneDigits.Length != CurrentPhoneOption.Length)
+        {
+            recipientPhoneError = $"Для кода {selectedPhoneCode} номер должен содержать {CurrentPhoneOption.Length} цифр.";
+            isValid = false;
+        }
+
+        if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            recipientEmailError = "Введите email.";
+            isValid = false;
+        }
+        else if (!recipientEmail.Contains('@') || !recipientEmail.Contains('.'))
+        {
+            recipientEmailError = "Введите корректный email.";
+            isValid = false;
+        }
+
+        if (deliveryMethod == "courier" && string.IsNullOrWhiteSpace(deliveryAddress))
+        {
+            deliveryAddressError = "Введите адрес доставки.";
+            isValid = false;
+        }
+
+        if (deliveryMethod == "point" && string.IsNullOrWhiteSpace(deliveryAddress))
+        {
+            deliveryAddressError = "Выберите пункт выдачи.";
+            isValid = false;
+        }
+
+        if (!isAgreementAccepted)
+        {
+            agreementError = "Необходимо согласие на обработку персональных данных.";
+            isValid = false;
+        }
+
+        if (!isValid)
+        {
+            errorMessage = "Проверьте правильность заполнения полей.";
+        }
+
+        return isValid;
+    }
 
     private async Task CreateOrderAsync()
     {
@@ -96,6 +527,11 @@ else
         if (!CartService.Items.Any())
         {
             errorMessage = "Корзина пуста.";
+            return;
+        }
+
+        if (!ValidateCheckoutForm())
+        {
             return;
         }
 
@@ -136,12 +572,15 @@ else
                 }
             }
 
+            var orderDate = DateTime.Now;
+
             var order = new Order
             {
                 User_Id = userId,
-                Order_Date = DateTime.Now,
+                Order_Date = orderDate,
                 Order_Status = "new",
-                Order_TotalAmount = CartService.GetTotalPrice()
+                Order_StatusChangedAt = orderDate,
+                Order_TotalAmount = GetFinalTotal()
             };
 
             context.Orders.Add(order);
@@ -183,6 +622,161 @@ else
             isProcessing = false;
         }
     }
+
+    private sealed class PickupPoint
+    {
+        public PickupPoint(string name, string address)
+        {
+            Name = name;
+            Address = address;
+        }
+
+        public string Name { get; }
+        public string Address { get; }
     }
 
+    private sealed class PhoneCodeOption
+    {
+        public PhoneCodeOption(string code, string country, int length, string example)
+        {
+            Code = code;
+            Country = country;
+            Length = length;
+            Example = example;
+        }
+
+        public string Code { get; }
+        public string Country { get; }
+        public int Length { get; }
+        public string Example { get; }
+    }
+
+    private readonly List<PhoneCodeOption> phoneCodeOptions =
+        [
+        new PhoneCodeOption("+7", "Россия", 10, "+7 800 555-55-44"),
+        new PhoneCodeOption("+375", "Беларусь", 9, "+375 12 345-67-89"),
+        new PhoneCodeOption("+370", "Литва", 8, "+370 612 34567"),
+        new PhoneCodeOption("+371", "Латвия", 8, "+371 2123 4567"),
+        new PhoneCodeOption("+372", "Эстония", 8, "+372 5123 4567"),
+        new PhoneCodeOption("+380", "Украина", 9, "+380 50 123-45-67"),
+        new PhoneCodeOption("+48", "Польша", 9, "+48 123 456 789"),
+        new PhoneCodeOption("+49", "Германия", 10, "+49 151 2345678"),
+        new PhoneCodeOption("+1", "США/Канада", 10, "+1 (555) 123-4567")
+        ];
+
+    private PhoneCodeOption CurrentPhoneOption =>
+    phoneCodeOptions.FirstOrDefault(option => option.Code == selectedPhoneCode)
+    ?? phoneCodeOptions[0];
+
+    private string GetFullPhoneNumber()
+    {
+        var localPart = GetOnlyDigits(recipientPhone);
+
+        if (string.IsNullOrWhiteSpace(localPart))
+        {
+            return string.Empty;
+        }
+
+        return $"{selectedPhoneCode}{localPart}";
+    }
+
+    private static string GetOnlyDigits(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : new string(value.Where(char.IsDigit).ToArray());
+    }
+
+    private string FormatPhoneForDisplay(string? fullPhone)
+    {
+        if (string.IsNullOrWhiteSpace(fullPhone))
+        {
+            return "Не указан";
+        }
+
+        var digits = GetOnlyDigits(fullPhone);
+
+        if (fullPhone.StartsWith("+375") && digits.Length >= 12)
+        {
+            var number = digits[^9..];
+            return $"+375 {number[..2]} {number.Substring(2, 3)}-{number.Substring(5, 2)}-{number.Substring(7, 2)}";
+        }
+
+        if (fullPhone.StartsWith("+1") && digits.Length >= 11)
+        {
+            var number = digits[^10..];
+            return $"+1 ({number[..3]}) {number.Substring(3, 3)}-{number.Substring(6, 4)}";
+        }
+
+        if (fullPhone.StartsWith("+7") && digits.Length >= 11)
+        {
+            var number = digits[^10..];
+            return $"+7 {number[..3]} {number.Substring(3, 3)}-{number.Substring(6, 2)}-{number.Substring(8, 2)}";
+        }
+
+        return fullPhone;
+    }
+
+    private string ParsePhoneCode(string? fullPhone)
+    {
+        if (string.IsNullOrWhiteSpace(fullPhone))
+        {
+            return "+7";
+        }
+
+        var option = phoneCodeOptions
+            .OrderByDescending(option => option.Code.Length)
+            .FirstOrDefault(option => fullPhone.StartsWith(option.Code));
+
+        return option?.Code ?? "+7";
+    }
+
+    private string? ParsePhoneLocalPart(string? fullPhone)
+    {
+        if (string.IsNullOrWhiteSpace(fullPhone))
+        {
+            return null;
+        }
+
+        var option = phoneCodeOptions
+            .OrderByDescending(option => option.Code.Length)
+            .FirstOrDefault(option => fullPhone.StartsWith(option.Code));
+
+        var digits = GetOnlyDigits(fullPhone);
+
+        if (option is null)
+        {
+            return digits;
+        }
+
+        var codeDigits = GetOnlyDigits(option.Code);
+
+        if (digits.Length <= codeDigits.Length)
+        {
+            return null;
+        }
+
+        return digits[codeDigits.Length..];
+    }
+
+    private void SetRecipientName(string? value)
+    {
+        recipientName = new string((value ?? string.Empty)
+            .Where(ch => char.IsLetter(ch) || ch == ' ' || ch == '-')
+            .ToArray());
+
+        recipientNameError = null;
+    }
+
+    private void OnPhoneInput(ChangeEventArgs e)
+    {
+        recipientPhone = GetOnlyDigits(e.Value?.ToString());
+        recipientPhoneError = null;
+    }
+
+    private void OnPhoneCodeChanged(ChangeEventArgs e)
+    {
+        selectedPhoneCode = e.Value?.ToString() ?? "+7";
+        recipientPhoneError = null;
+    }
 }

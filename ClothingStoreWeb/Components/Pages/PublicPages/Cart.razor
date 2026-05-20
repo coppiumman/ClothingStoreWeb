@@ -6,89 +6,136 @@
 
 <PageTitle>Корзина</PageTitle>
 
-<h1>Корзина</h1>
+<div class="cart-page">
+    <h1>Корзина</h1>
 
-@if (!CartService.Items.Any())
-{
-    <div class="cart-empty">
-        <h3>Корзина пока пуста</h3>
-        <p>Перейдите в каталог, чтобы выбрать товары для заказа.</p>
+    @if (!CartService.Items.Any())
+    {
+        <div class="cart-empty">
+            <h2>Корзина пока пуста</h2>
+            <p>Добавьте товары из каталога, чтобы перейти к оформлению заказа.</p>
 
-        <a class="btn btn-primary" href="/catalog">
-            Перейти в каталог
-        </a>
-
-        <a class="btn btn-outline-secondary disabled" href="/checkout" aria-disabled="true">
-            Перейти к оформлению
-        </a>
-    </div>
-}
-else
-{
-    <div class="cart-content">
-        <table class="cart-table">
-            <thead>
-                <tr>
-                    <th>Товар</th>
-                    <th>Размер</th>
-                    <th>Цена</th>
-                    <th>Количество</th>
-                    <th>Сумма</th>
-                    <th></th>
-                </tr>
-            </thead>
-
-            <tbody>
-                @foreach (var item in CartService.Items)
-                {
-                    <tr>
-                        <td>@item.Product_Name</td>
-                        <td>@item.Size_Name</td>
-                        <td>@item.Product_Price.ToString("N2") ₽</td>
-                        <td>
-                            <div class="cart-quantity">
-                                <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="() => DecreaseQuantity(item.Product_Id, item.Size_Id)">
-                                    -
-                                </button>
-
-                                <span>@item.Quantity</span>
-
-                                <button class="btn btn-sm btn-outline-secondary"
-                                        @onclick="() => IncreaseQuantity(item.Product_Id, item.Size_Id)">
-                                    +
-                                </button>
-                            </div>
-                        </td>
-                        <td>@item.TotalPrice.ToString("N2") ₽</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-danger"
-                                    @onclick="() => RemoveItem(item.Product_Id, item.Size_Id)">
-                                Удалить
-                            </button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-
-        <div class="cart-summary">
-            <p>
-                <strong>Итого:</strong> @CartService.GetTotalPrice().ToString("N2") ₽
-            </p>
-
-            <div class="cart-actions">
-                <a class="btn btn-outline-secondary" href="/catalog">
-                    Продолжить покупки
+            <div class="cart-empty-actions">
+                <a class="cart-button cart-button-primary" href="/catalog">
+                    Перейти в каталог
                 </a>
 
-                <a class="btn btn-primary" href="/checkout">
+                <span class="cart-button cart-button-disabled">
                     Перейти к оформлению
-                </a>
+                </span>
             </div>
         </div>
-    </div>
-}
+    }
+    else
+    {
+        <div class="cart-layout">
+            <div class="cart-products">
+                <table class="cart-table">
+                    <colgroup>
+                        <col class="cart-col-product" />
+                        <col class="cart-col-size" />
+                        <col class="cart-col-price" />
+                        <col class="cart-col-quantity" />
+                        <col class="cart-col-total" />
+                        <col class="cart-col-remove" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Товар</th>
+                            <th>Размер</th>
+                            <th>Цена</th>
+                            <th>Количество</th>
+                            <th>Сумма</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var item in CartService.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="cart-product-name">
+                                        @item.Product_Name
+                                    </div>
+                                </td>
+
+                                <td class="cart-size-cell">
+                                    @item.Size_Name
+                                </td>
+
+                                <td>
+                                    @item.Product_Price.ToString("N2") ₽
+                                </td>
+
+                                <td>
+                                    <div class="cart-quantity">
+                                        <button type="button"
+                                                class="cart-quantity-button"
+                                                @onclick="() => DecreaseQuantity(item.Product_Id, item.Size_Id)">
+                                            −
+                                        </button>
+
+                                        <span class="cart-quantity-value">
+                                            @item.Quantity
+                                        </span>
+
+                                        <button type="button"
+                                                class="cart-quantity-button"
+                                                @onclick="() => IncreaseQuantity(item.Product_Id, item.Size_Id)">
+                                            +
+                                        </button>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <strong>@item.TotalPrice.ToString("N2") ₽</strong>
+                                </td>
+
+                                <td class="cart-remove-cell">
+                                    <button type="button"
+                                            class="cart-remove-button"
+                                            @onclick="() => RemoveItem(item.Product_Id, item.Size_Id)">
+                                        Удалить
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <aside class="cart-summary">
+                <h2>Ваш заказ</h2>
+
+                <div class="cart-summary-row">
+                    <span>Товаров</span>
+                    <strong>@GetTotalQuantity()</strong>
+                </div>
+
+                <div class="cart-summary-row">
+                    <span>Сумма</span>
+                    <strong>@CartService.GetTotalPrice().ToString("N2") ₽</strong>
+                </div>
+
+                <div class="cart-summary-total">
+                    <span>Итого</span>
+                    <strong>@CartService.GetTotalPrice().ToString("N2") ₽</strong>
+                </div>
+
+                <div class="cart-actions">
+                    <a class="cart-button cart-button-primary" href="/checkout">
+                        Перейти к оформлению
+                    </a>
+
+                    <a class="cart-button cart-button-secondary" href="/catalog">
+                        Продолжить покупки
+                    </a>
+                </div>
+            </aside>
+        </div>
+    }
+</div>
 
 @code {
     protected override void OnInitialized()
@@ -123,6 +170,11 @@ else
     private async Task DecreaseQuantity(int productId, int sizeId)
     {
         await CartService.DecreaseQuantityAsync(productId, sizeId);
+    }
+
+    private int GetTotalQuantity()
+    {
+        return CartService.Items.Sum(item => item.Quantity);
     }
 
     public void Dispose()

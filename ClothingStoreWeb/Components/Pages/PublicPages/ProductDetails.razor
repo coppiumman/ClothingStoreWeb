@@ -114,6 +114,49 @@ else
             </div>
         }
 
+        @if (isAddToCartModalOpen)
+        {
+            <div class="add-cart-modal-backdrop">
+                <div class="add-cart-modal">
+                    <button type="button"
+                            class="add-cart-modal-close"
+                            @onclick="CloseAddToCartModal">
+                        ×
+                    </button>
+
+                    <h2>Товар добавлен в корзину</h2>
+
+                    @if (!string.IsNullOrWhiteSpace(addedProductImagePath))
+                    {
+                        <img src="@addedProductImagePath"
+                             alt="@addedProductName"
+                             class="add-cart-modal-image" />
+                    }
+
+                    <div class="add-cart-modal-name">
+                        @addedProductName
+                    </div>
+
+                    <div class="add-cart-modal-size">
+                        Размер @addedProductSizeName
+                    </div>
+
+                    <div class="add-cart-modal-actions">
+                        <a class="add-cart-modal-button add-cart-modal-button-primary"
+                           href="/cart">
+                            Перейти в корзину
+                        </a>
+
+                        <button type="button"
+                                class="add-cart-modal-button"
+                                @onclick="CloseAddToCartModal">
+                            Продолжить покупки
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
         <div class="product-details-info">
             <h1>@product.Product_Name</h1>
 
@@ -211,6 +254,10 @@ else
     private double pointerDownY;
     private double imageOffsetX;
     private double imageOffsetY;
+    private bool isAddToCartModalOpen;
+    private string? addedProductName;
+    private string? addedProductImagePath;
+    private string? addedProductSizeName;
 
     private const double MaxImageOffsetX = 500;
     private const double MaxImageOffsetY = 500;
@@ -276,7 +323,16 @@ else
             AvailableQuantity = selectedStock.Stock_Quantity
         });
 
-        NavigationManager.NavigateTo("/cart");
+        addedProductName = product.Product_Name;
+        addedProductImagePath = product.Product_ImagePath;
+        addedProductSizeName = selectedStock.Size.Size_Name;
+
+        isAddToCartModalOpen = true;
+    }
+
+    private void CloseAddToCartModal()
+    {
+        isAddToCartModalOpen = false;
     }
 
     private List<string> GetProductImages()

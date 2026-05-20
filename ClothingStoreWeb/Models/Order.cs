@@ -28,6 +28,8 @@ namespace ClothingStoreWeb.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal Order_TotalAmount { get; set; }
 
+        public DateTime? Order_StatusChangedAt { get; set; }
+
         public ApplicationUser? User { get; set; }
 
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();

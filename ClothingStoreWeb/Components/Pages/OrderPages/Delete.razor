@@ -136,6 +136,7 @@
         }
 
         order.Order_Status = "cancelled";
+        order.Order_StatusChangedAt = DateTime.Now;
 
         await context.SaveChangesAsync();
 

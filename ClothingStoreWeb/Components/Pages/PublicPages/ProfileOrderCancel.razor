@@ -15,56 +15,74 @@
 
 <PageTitle>Отмена заказа</PageTitle>
 
-<h1>Отмена заказа</h1>
+<div class="order-cancel-page">
+    <h1>Отмена заказа</h1>
 
-@if (order is null)
-{
-    <p><em>Загрузка...</em></p>
-}
-else
-{
-    <div class="profile-card">
-        <h3>Заказ №@order.Order_Id</h3>
+    @if (order is null)
+    {
+        <p class="order-cancel-muted"><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <section class="order-cancel-warning">
+            <div class="order-cancel-warning-title">
+                Вы уверены, что хотите отменить заказ?
+            </div>
+        </section>
 
-        <p>Вы уверены, что хотите отменить этот заказ?</p>
+        <section class="order-cancel-summary">
+            <div>
+                <div class="order-cancel-label">Номер заказа</div>
+                <div class="order-cancel-value">Заказ №@order.Order_Id</div>
+            </div>
 
-        <p>
-            <strong>Дата заказа:</strong>
-            @order.Order_Date.ToString("dd.MM.yyyy HH:mm")
-        </p>
+            <div>
+                <div class="order-cancel-label">Дата заказа</div>
+                <div class="order-cancel-value">@order.Order_Date.ToString("dd.MM.yyyy HH:mm")</div>
+            </div>
 
-        <p>
-            <strong>Статус:</strong>
-            @GetOrderStatusName(order.Order_Status)
-        </p>
+            <div>
+                <div class="order-cancel-label">Статус</div>
+                <div class="order-cancel-value">@GetOrderStatusName(order.Order_Status)</div>
+            </div>
 
-        <p>
-            <strong>Сумма заказа:</strong>
-            @order.Order_TotalAmount.ToString("N2") ₽
-        </p>
+            <div>
+                <div class="order-cancel-label">Сумма заказа</div>
+                <div class="order-cancel-value">@order.Order_TotalAmount.ToString("N2") ₽</div>
+            </div>
+        </section>
 
         @if (!string.IsNullOrWhiteSpace(cancelError))
         {
-            <div class="alert alert-danger">
+            <div class="order-cancel-error">
                 @cancelError
             </div>
         }
 
-        <EditForm method="post" Model="order" OnValidSubmit="CancelOrder" FormName="cancel-user-order" Enhance>
-            <button type="submit" class="btn btn-danger">
-                Отменить заказ
-            </button>
+        <EditForm method="post"
+                  Model="order"
+                  OnValidSubmit="CancelOrder"
+                  FormName="cancel-user-order"
+                  Enhance>
+            <div class="order-cancel-actions">
+                <button type="submit" class="order-cancel-button danger">
+                    Отменить заказ
+                </button>
 
-            <a class="btn btn-outline-secondary" href="/profile">
-                Вернуться в личный кабинет
-            </a>
+                <a class="order-cancel-button" href="@GetReturnProfileUrl()">
+                    Вернуться в личный кабинет
+                </a>
+            </div>
         </EditForm>
-    </div>
-}
+    }
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "id")]
     private int Order_Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnTab")]
+    private string? ReturnTab { get; set; }
 
     private Order? order;
     private string? userId;
@@ -91,13 +109,13 @@ else
 
         if (order is null)
         {
-            NavigationManager.NavigateTo("/profile");
+            NavigationManager.NavigateTo(GetReturnProfileUrl());
             return;
         }
 
         if (!CanUserCancelOrder(order.Order_Status))
         {
-            NavigationManager.NavigateTo("/profile");
+            NavigationManager.NavigateTo(GetReturnProfileUrl());
             return;
         }
     }
@@ -106,7 +124,7 @@ else
     {
         if (string.IsNullOrWhiteSpace(userId))
         {
-            NavigationManager.NavigateTo("/Account/Login");
+            NavigationManager.NavigateTo(GetReturnProfileUrl());
             return;
         }
 
@@ -143,10 +161,21 @@ else
         }
 
         orderFromDb.Order_Status = "cancelled";
+        orderFromDb.Order_StatusChangedAt = DateTime.Now;
 
         await context.SaveChangesAsync();
 
-        NavigationManager.NavigateTo("/profile");
+        NavigationManager.NavigateTo(GetReturnProfileUrl());
+    }
+
+    private string GetReturnProfileUrl()
+    {
+        return ReturnTab switch
+        {
+            "current" => "/profile?tab=current",
+            "history" => "/profile?tab=history",
+            _ => "/profile?tab=current"
+        };
     }
 
     private static bool CanUserCancelOrder(string? status)

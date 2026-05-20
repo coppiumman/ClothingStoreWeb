@@ -146,7 +146,6 @@ else
         }
 
         Users = await context.Users.ToListAsync();
-        Users = await context.Users.ToListAsync();
 
         if (Order is null)
         {
@@ -215,6 +214,11 @@ else
                     stock.Stock_Quantity += orderItem.OrderItem_Quantity;
                 }
             }
+        }
+
+        if (oldStatus != newStatus)
+        {
+            orderFromDb.Order_StatusChangedAt = DateTime.Now;
         }
 
         orderFromDb.User_Id = Order.User_Id;

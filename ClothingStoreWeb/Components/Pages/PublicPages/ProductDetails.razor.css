@@ -299,16 +299,105 @@
     }
 }
 
-/*
-@keyframes viewerImageIn {
-    from {
-        opacity: 0;
-        transform: scale(0.96);
+.add-cart-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    background: rgba(0, 0, 0, 0.42);
+}
+
+.add-cart-modal {
+    position: relative;
+    width: 100%;
+    max-width: 430px;
+    padding: 34px 34px 38px;
+    background: #fff;
+    text-align: center;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+}
+
+.add-cart-modal-close {
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    border: none;
+    background: transparent;
+    color: #333;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.add-cart-modal h2 {
+    margin: 0 0 28px;
+    color: #111;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 23px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+}
+
+.add-cart-modal-image {
+    display: block;
+    width: 120px;
+    height: 150px;
+    margin: 0 auto 18px;
+    object-fit: contain;
+    background: #fff;
+}
+
+.add-cart-modal-name {
+    margin-bottom: 8px;
+    color: #111;
+    font-size: 15px;
+    line-height: 1.35;
+}
+
+.add-cart-modal-size {
+    margin-bottom: 28px;
+    color: #111;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.add-cart-modal-actions {
+    display: grid;
+    gap: 14px;
+}
+
+.add-cart-modal-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    padding: 12px 22px;
+    border: 1px solid #111;
+    background: #fff;
+    color: #111;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+    .add-cart-modal-button:hover {
+        background: #111;
+        color: #fff;
     }
 
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+.add-cart-modal-button-primary {
+    background: #111;
+    color: #fff;
 }
-*/
+
+    .add-cart-modal-button-primary:hover {
+        background: #333;
+        color: #fff;
+    }
