@@ -13,47 +13,34 @@
 
 <h1>Позиции заказа</h1>
 
-@if (canCreate)
-{
-    <p>
-        <a href="orderitems/create">Добавить</a>
-    </p>
-}
-
 <QuickGrid Class="table" Items="orderItems">
     <TemplateColumn Title="Заказ">
-        @(context.Order is null ? $"Заказ №{context.Order_Id}" : GetOrderDisplayName(context.Order))
+        Заказ №@context.Order_Id
     </TemplateColumn>
+
+    <TemplateColumn Title="Статус заказа">
+        @GetOrderStatusName(context.Order?.Order_Status)
+    </TemplateColumn>
+
     <TemplateColumn Title="Товар">
         @(context.Product?.Product_Name ?? context.Product_Id.ToString())
     </TemplateColumn>
+
     <TemplateColumn Title="Размер">
         @(context.Size?.Size_Name ?? context.Size_Id.ToString())
     </TemplateColumn>
+
     <PropertyColumn Property="orderitem => orderitem.OrderItem_Quantity" Title="Количество" />
     <PropertyColumn Property="orderitem => orderitem.OrderItem_Price" Title="Цена позиции" />
 
     <TemplateColumn Context="orderitem">
-        @if (canEdit)
-        {
-            <a href="@($"orderitems/edit?orderitem_id={orderitem.OrderItem_Id}")">Изменить</a>
-            <span> | </span>
-        }
         <a href="@($"orderitems/details?orderitem_id={orderitem.OrderItem_Id}")">Подробнее</a>
-        @if (canDelete)
-        {
-            <span> | </span>
-            <a href="@($"orderitems/delete?orderitem_id={orderitem.OrderItem_Id}")">Удалить</a>
-        }
     </TemplateColumn>
 </QuickGrid>
 
 @code {
     private ApplicationDbContext? context;
     private IQueryable<OrderItem> orderItems = Enumerable.Empty<OrderItem>().AsQueryable();
-    private bool canCreate;
-    private bool canEdit;
-    private bool canDelete;
 
     protected override async Task OnInitializedAsync()
     {
@@ -62,10 +49,6 @@
             NavigationManager.NavigateTo("/Account/AccessDenied");
             return;
         }
-
-        canCreate = await AccessService.CanCreateAsync("OrderItems");
-        canEdit = await AccessService.CanEditAsync("OrderItems");
-        canDelete = await AccessService.CanDeleteAsync("OrderItems");
 
         context = DbFactory.CreateDbContext();
         orderItems = context.OrderItems
@@ -84,5 +67,20 @@
         }
     }
 
-    private string GetOrderDisplayName(Order order) => $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy}";
+    private static string GetOrderStatusName(string? status)
+    {
+        return status switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "processing" => "В обработке",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => status ?? ""
+        };
+    }
 }

@@ -22,7 +22,14 @@
 <div class="checkout-page">
     <h1>Оформление заказа</h1>
 
-    @if (!CartService.Items.Any())
+    @if (!isCartLoaded)
+    {
+        <div class="checkout-empty">
+            <h2>Загрузка корзины</h2>
+            <p>Пожалуйста, подождите.</p>
+        </div>
+    }
+    else if (!CartService.Items.Any())
     {
         <div class="checkout-empty">
             <h2>Корзина пуста</h2>
@@ -98,7 +105,8 @@
 
                         <input type="email"
                                class="checkout-input @(recipientEmailError is not null ? "checkout-input-error" : null)"
-                               @bind="recipientEmail"
+                               value="@recipientEmail"
+                               @oninput="OnRecipientEmailInput"
                                placeholder="example@mail.ru" />
 
                         @if (recipientEmailError is not null)
@@ -180,7 +188,8 @@
                             <label>Адрес доставки</label>
                             <input type="text"
                                    class="checkout-input @(deliveryAddressError is not null ? "checkout-input-error" : null)"
-                                   @bind="deliveryAddress"
+                                   value="@deliveryAddress"
+                                   @oninput="OnDeliveryAddressInput"
                                    placeholder="Введите адрес доставки" />
 
                             @if (deliveryAddressError is not null)
@@ -222,7 +231,9 @@
                     </div>
 
                     <label class="checkout-agreement @(agreementError is not null ? "checkout-agreement-error" : null)">
-                        <input type="checkbox" @bind="isAgreementAccepted" />
+                        <input type="checkbox"
+                               checked="@isAgreementAccepted"
+                               @onchange="OnAgreementChanged" />
                         <span>Я согласен на обработку персональных данных</span>
                     </label>
 
@@ -327,6 +338,7 @@
 @code {
     private string? errorMessage;
     private bool isProcessing;
+    private bool isCartLoaded;
 
     private string? recipientName;
     private string? recipientPhone;
@@ -355,8 +367,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await CartService.LoadCartAsync();
-
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var claimsUser = authState.User;
 
@@ -380,17 +390,36 @@
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || isCartLoaded)
+        {
+            return;
+        }
+
+        try
+        {
+            await CartService.LoadCartAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            errorMessage = "Не удалось загрузить корзину. Обновите страницу или вернитесь в каталог.";
+        }
+        finally
+        {
+            isCartLoaded = true;
+            StateHasChanged();
+        }
+    }
+
     private void OnDeliveryMethodChanged(ChangeEventArgs e)
     {
         deliveryMethod = e.Value?.ToString() ?? "pickup";
+        deliveryAddressError = null;
 
         if (deliveryMethod == "pickup")
         {
             deliveryAddress = "г. Москва, ул. Центральная, д. 10";
-        }
-        else if (deliveryMethod == "point")
-        {
-            deliveryAddress = null;
         }
         else
         {
@@ -416,6 +445,7 @@
     private void SelectPickupPoint(PickupPoint point)
     {
         deliveryAddress = point.Address;
+        deliveryAddressError = null;
         isPickupPointModalOpen = false;
     }
 
@@ -470,16 +500,10 @@
             isValid = false;
         }
 
-        var phoneDigits = GetOnlyDigits(recipientPhone);
+        ValidatePhoneField();
 
-        if (string.IsNullOrWhiteSpace(phoneDigits))
+        if (recipientPhoneError is not null)
         {
-            recipientPhoneError = "Введите номер телефона.";
-            isValid = false;
-        }
-        else if (phoneDigits.Length != CurrentPhoneOption.Length)
-        {
-            recipientPhoneError = $"Для кода {selectedPhoneCode} номер должен содержать {CurrentPhoneOption.Length} цифр.";
             isValid = false;
         }
 
@@ -574,13 +598,28 @@
 
             var orderDate = DateTime.Now;
 
+            var productsTotal = CartService.GetTotalPrice();
+            var deliveryPrice = GetDeliveryPrice();
+            var finalTotal = productsTotal + deliveryPrice;
+
             var order = new Order
             {
                 User_Id = userId,
                 Order_Date = orderDate,
                 Order_Status = "new",
                 Order_StatusChangedAt = orderDate,
-                Order_TotalAmount = GetFinalTotal()
+                Order_TotalAmount = finalTotal,
+
+                Order_RecipientName = recipientName?.Trim(),
+                Order_RecipientPhone = GetFullPhoneNumber(),
+                Order_RecipientEmail = recipientEmail?.Trim(),
+
+                Order_DeliveryMethod = deliveryMethod,
+                Order_DeliveryAddress = deliveryAddress?.Trim(),
+                Order_DeliveryAmount = deliveryPrice,
+
+                Order_PaymentMethod = paymentMethod,
+                Order_Comment = orderComment?.Trim()
             };
 
             context.Orders.Add(order);
@@ -771,12 +810,77 @@
     private void OnPhoneInput(ChangeEventArgs e)
     {
         recipientPhone = GetOnlyDigits(e.Value?.ToString());
-        recipientPhoneError = null;
+
+        ValidatePhoneField();
     }
 
     private void OnPhoneCodeChanged(ChangeEventArgs e)
     {
         selectedPhoneCode = e.Value?.ToString() ?? "+7";
+
+        if (!string.IsNullOrWhiteSpace(recipientPhone))
+        {
+            ValidatePhoneField();
+        }
+        else
+        {
+            recipientPhoneError = null;
+        }
+    }
+
+    private void OnAgreementChanged(ChangeEventArgs e)
+    {
+        isAgreementAccepted = e.Value is bool value && value;
+
+        agreementError = isAgreementAccepted
+            ? null
+            : "Необходимо согласие на обработку персональных данных.";
+    }
+
+    private void OnRecipientEmailInput(ChangeEventArgs e)
+    {
+        recipientEmail = e.Value?.ToString();
+
+        if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            recipientEmailError = "Введите email.";
+            return;
+        }
+
+        if (!recipientEmail.Contains('@') || !recipientEmail.Contains('.'))
+        {
+            recipientEmailError = "Введите корректный email.";
+            return;
+        }
+
+        recipientEmailError = null;
+    }
+
+    private void ValidatePhoneField()
+    {
+        var phoneDigits = GetOnlyDigits(recipientPhone);
+
+        if (string.IsNullOrWhiteSpace(phoneDigits))
+        {
+            recipientPhoneError = "Введите номер телефона.";
+            return;
+        }
+
+        if (phoneDigits.Length != CurrentPhoneOption.Length)
+        {
+            recipientPhoneError = $"Для кода {selectedPhoneCode} номер должен содержать {CurrentPhoneOption.Length} цифр.";
+            return;
+        }
+
         recipientPhoneError = null;
+    }
+
+    private void OnDeliveryAddressInput(ChangeEventArgs e)
+    {
+        deliveryAddress = e.Value?.ToString();
+
+        deliveryAddressError = string.IsNullOrWhiteSpace(deliveryAddress)
+            ? "Введите адрес доставки."
+            : null;
     }
 }

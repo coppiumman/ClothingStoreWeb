@@ -88,18 +88,10 @@ else
         ("returned", "Возврат")
     };
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        if (!await AccessService.CanCreateAsync("Orders"))
-        {
-            NavigationManager.NavigateTo("/Account/AccessDenied");
-            return;
-        }
-
-        Order ??= new();
-
-        using var context = DbFactory.CreateDbContext();
-        Users = await context.Users.ToListAsync();
+        NavigationManager.NavigateTo("/orders", replace: true);
+        return Task.CompletedTask;
     }
 
     private static string GetUserDisplayName(ApplicationUser? user)

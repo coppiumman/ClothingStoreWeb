@@ -47,7 +47,7 @@ namespace ClothingStoreWeb.Models
 
         [StringLength(500, ErrorMessage = "Путь к изображению не должен превышать 500 символов")]
         public string? Product_ImagePath4 { get; set; }
-
+        public bool Product_IsHidden { get; set; }
         public Category? Category { get; set; }
 
         public ICollection<Stock> Stocks { get; set; } = new List<Stock>();

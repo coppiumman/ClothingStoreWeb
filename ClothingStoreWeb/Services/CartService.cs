@@ -27,30 +27,42 @@ public class CartService
 
     public async Task LoadCartAsync()
     {
-        var storageKey = await GetStorageKeyAsync();
-
-        var savedItems = await jsRuntime.InvokeAsync<List<CartItem>?>(
-            "cartStorage.load",
-            storageKey);
-
-        items.Clear();
-
-        if (savedItems is not null)
+        try
         {
-            items.AddRange(savedItems);
-        }
+            var storageKey = await GetStorageKeyAsync();
 
-        NotifyStateChanged();
+            var savedItems = await jsRuntime.InvokeAsync<List<CartItem>?>(
+                "cartStorage.load",
+                storageKey);
+
+            items.Clear();
+
+            if (savedItems is not null)
+            {
+                items.AddRange(savedItems);
+            }
+
+            NotifyStateChanged();
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     private async Task SaveCartAsync()
     {
-        var storageKey = await GetStorageKeyAsync();
+        try
+        {
+            var storageKey = await GetStorageKeyAsync();
 
-        await jsRuntime.InvokeVoidAsync(
-            "cartStorage.save",
-            storageKey,
-            items);
+            await jsRuntime.InvokeVoidAsync(
+                "cartStorage.save",
+                storageKey,
+                items);
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     public async Task AddItemAsync(CartItem item)
@@ -128,13 +140,19 @@ public class CartService
 
     public async Task ClearAsync()
     {
-        var storageKey = await GetStorageKeyAsync();
-
         items.Clear();
 
-        await jsRuntime.InvokeVoidAsync(
-            "cartStorage.remove",
-            storageKey);
+        try
+        {
+            var storageKey = await GetStorageKeyAsync();
+
+            await jsRuntime.InvokeVoidAsync(
+                "cartStorage.remove",
+                storageKey);
+        }
+        catch (InvalidOperationException)
+        {
+        }
 
         NotifyStateChanged();
     }

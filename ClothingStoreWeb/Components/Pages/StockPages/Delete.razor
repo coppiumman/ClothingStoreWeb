@@ -1,5 +1,5 @@
 @page "/stocks/delete"
-@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@attribute [Authorize(Roles = "Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
@@ -32,6 +32,14 @@
             <dt class="col-sm-2">Количество на складе</dt>
             <dd class="col-sm-10">@stock.Stock_Quantity</dd>
         </dl>
+
+        @if (!string.IsNullOrWhiteSpace(deleteError))
+        {
+            <div class="alert alert-danger">
+                @deleteError
+            </div>
+        }
+
         <EditForm method="post" Model="stock" OnValidSubmit="DeleteStock" FormName="delete" Enhance>
             <button type="submit" class="btn btn-danger" disabled="@(stock is null)">Удалить</button> |
             <a href="/stocks">Вернуться к списку</a>
@@ -41,6 +49,7 @@
 
 @code {
     private Stock? stock;
+    private string? deleteError;
 
     [SupplyParameterFromQuery]
     private int Stock_Id { get; set; }
@@ -67,9 +76,35 @@
 
     private async Task DeleteStock()
     {
-        using var context = DbFactory.CreateDbContext();
-        context.Stocks.Remove(stock!);
+        if (stock is null)
+        {
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var stockFromDb = await context.Stocks
+            .FirstOrDefaultAsync(s => s.Stock_Id == stock.Stock_Id);
+
+        if (stockFromDb is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        var isUsedInOrders = await context.OrderItems.AnyAsync(orderItem =>
+            orderItem.Product_Id == stockFromDb.Product_Id &&
+            orderItem.Size_Id == stockFromDb.Size_Id);
+
+        if (isUsedInOrders)
+        {
+            deleteError = "Удаление невозможно: данный товар и размер уже используются в заказах. Установите количество на складе равным 0.";
+            return;
+        }
+
+        context.Stocks.Remove(stockFromDb);
         await context.SaveChangesAsync();
+
         NavigationManager.NavigateTo("/stocks");
     }
 }

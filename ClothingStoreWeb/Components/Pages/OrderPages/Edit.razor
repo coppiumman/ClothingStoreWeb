@@ -20,39 +20,48 @@
 else
 {
     <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-5">
             <EditForm method="post" Model="Order" OnValidSubmit="UpdateOrder" FormName="edit" Enhance>
                 <DataAnnotationsValidator />
-                <ValidationSummary role="alert"/>
+                <ValidationSummary role="alert" />
+
                 <input type="hidden" name="Order.Order_Id" value="@Order.Order_Id" />
+
+                <dl class="row">
+                    <dt class="col-sm-4">Номер заказа</dt>
+                    <dd class="col-sm-8">Заказ №@Order.Order_Id</dd>
+
+                    <dt class="col-sm-4">Пользователь</dt>
+                    <dd class="col-sm-8">@GetUserDisplayName(Order.User)</dd>
+
+                    <dt class="col-sm-4">Дата заказа</dt>
+                    <dd class="col-sm-8">@Order.Order_Date.ToString("dd.MM.yyyy HH:mm")</dd>
+
+                    <dt class="col-sm-4">Сумма заказа</dt>
+                    <dd class="col-sm-8">@Order.Order_TotalAmount.ToString("N2") ₽</dd>
+
+                    <dt class="col-sm-4">Текущий статус</dt>
+                    <dd class="col-sm-8">@GetOrderStatusName(Order.Order_Status)</dd>
+                </dl>
+
                 <div class="mb-3">
-                    <label for="user_id" class="form-label">Пользователь</label>
-                    <InputSelect id="user_id" @bind-Value="Order.User_Id" class="form-control" aria-required="true">
-                        <option value="">Выберите пользователя</option>
-                        @foreach (var user in Users)
-                        {
-                            <option value="@user.Id">@GetUserDisplayName(user)</option>
-                        }
-                    </InputSelect>
-                    <ValidationMessage For="() => Order.User_Id" class="text-danger" />
-                </div>
-                <div class="mb-3">
-                <span class="text-danger">*</span>
-                    <label for="order_date" class="form-label">Дата заказа:</label>
-                    <InputDate id="order_date" @bind-Value="Order.Order_Date" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную дату заказа"/>
-                    <ValidationMessage For="() => Order.Order_Date" class="text-danger" />
-                </div>
-                <div class="mb-3">
-                <span class="text-danger">*</span>
-                    <label for="order_status" class="form-label">Статус заказа:</label>
-                    <InputSelect id="order_status" @bind-Value="Order.Order_Status" class="form-control" aria-required="true" disabled="@isFinalStatus">
+                    <span class="text-danger">*</span>
+                    <label for="order_status" class="form-label">Новый статус:</label>
+
+                    <InputSelect id="order_status"
+                                 @bind-Value="Order.Order_Status"
+                                 class="form-control"
+                                 aria-required="true"
+                                 disabled="@isFinalStatus">
                         <option value="">Выберите статус</option>
                         @foreach (var status in OrderStatuses)
                         {
                             <option value="@status.Value">@status.Name</option>
                         }
                     </InputSelect>
+
                     <ValidationMessage For="() => Order.Order_Status" class="text-danger" />
+
                     @if (isFinalStatus)
                     {
                         <div class="text-muted mt-1">
@@ -60,19 +69,17 @@ else
                         </div>
                     }
                 </div>
-                <div class="mb-3">
-                <span class="text-danger">*</span>
-                    <label for="order_totalamount" class="form-label">Сумма заказа:</label>
-                    <InputNumber id="order_totalamount" @bind-Value="Order.Order_TotalAmount" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную сумму заказа"/>
-                    <ValidationMessage For="() => Order.Order_TotalAmount" class="text-danger" />
-                </div>
+
                 @if (!string.IsNullOrWhiteSpace(statusChangeError))
                 {
                     <div class="alert alert-danger">
                         @statusChangeError
                     </div>
                 }
-                <button type="submit" class="btn btn-primary">Сохранить</button>
+
+                <button type="submit" class="btn btn-primary" disabled="@isFinalStatus">
+                    Сохранить
+                </button>
             </EditForm>
         </div>
     </div>
@@ -138,7 +145,9 @@ else
         }
 
         using var context = DbFactory.CreateDbContext();
-        Order ??= await context.Orders.FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
+        Order ??= await context.Orders
+            .Include(order => order.User)
+            .FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
 
         if (Order is not null)
         {
@@ -170,12 +179,12 @@ else
         return user.Id;
     }
 
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task UpdateOrder()
     {
         if (Order is null)
+        {
             return;
+        }
 
         using var context = DbFactory.CreateDbContext();
 
@@ -221,10 +230,7 @@ else
             orderFromDb.Order_StatusChangedAt = DateTime.Now;
         }
 
-        orderFromDb.User_Id = Order.User_Id;
-        orderFromDb.Order_Date = Order.Order_Date;
         orderFromDb.Order_Status = newStatus;
-        orderFromDb.Order_TotalAmount = Order.Order_TotalAmount;
 
         try
         {
@@ -248,5 +254,22 @@ else
     {
         using var context = DbFactory.CreateDbContext();
         return context.Orders.Any(e => e.Order_Id == order_id);
+    }
+
+    private static string GetOrderStatusName(string? status)
+    {
+        return status switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "processing" => "В обработке",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => status ?? ""
+        };
     }
 }

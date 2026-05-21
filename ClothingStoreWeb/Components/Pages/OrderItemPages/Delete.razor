@@ -1,85 +1,13 @@
 @page "/orderitems/delete"
 @attribute [Authorize(Roles = "Сотрудник,Администратор")]
-@using Microsoft.EntityFrameworkCore
-@using ClothingStoreWeb.Models
-@inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
-@inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Удаление</PageTitle>
-
-<h1>Удаление</h1>
-
-<p>Вы уверены, что хотите удалить этот элемент?</p>
-<div>
-    <h2>Позиция заказа</h2>
-    <hr />
-    @if (orderitem is null)
-    {
-        <p><em>Загрузка...</em></p>
-    }
-    else {
-        <dl class="row">
-            <dt class="col-sm-2">Заказ</dt>
-            <dd class="col-sm-10">@(orderitem.Order is null ? $"Заказ №{orderitem.Order_Id}" : GetOrderDisplayName(orderitem.Order))</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Товар</dt>
-            <dd class="col-sm-10">@(orderitem.Product?.Product_Name ?? orderitem.Product_Id.ToString())</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Размер</dt>
-            <dd class="col-sm-10">@(orderitem.Size?.Size_Name ?? orderitem.Size_Id.ToString())</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Количество</dt>
-            <dd class="col-sm-10">@orderitem.OrderItem_Quantity</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Цена позиции</dt>
-            <dd class="col-sm-10">@orderitem.OrderItem_Price</dd>
-        </dl>
-        <EditForm method="post" Model="orderitem" OnValidSubmit="DeleteOrderItem" FormName="delete" Enhance>
-            <button type="submit" class="btn btn-danger" disabled="@(orderitem is null)">Удалить</button> |
-            <a href="/orderitems">Вернуться к списку</a>
-        </EditForm>
-    }
-</div>
+<PageTitle>Удаление недоступно</PageTitle>
 
 @code {
-    private OrderItem? orderitem;
-
-    [SupplyParameterFromQuery]
-    private int OrderItem_Id { get; set; }
-
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        if (!await AccessService.CanDeleteAsync("OrderItems"))
-        {
-            NavigationManager.NavigateTo("/Account/AccessDenied");
-            return;
-        }
-
-        using var context = DbFactory.CreateDbContext();
-        orderitem = await context.OrderItems
-            .Include(oi => oi.Order)
-            .Include(oi => oi.Product)
-            .Include(oi => oi.Size)
-            .FirstOrDefaultAsync(m => m.OrderItem_Id == OrderItem_Id);
-
-        if (orderitem is null)
-        {
-            NavigationManager.NavigateTo("notfound");
-        }
-    }
-
-    private string GetOrderDisplayName(Order order) => $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy}";
-
-    private async Task DeleteOrderItem()
-    {
-        using var context = DbFactory.CreateDbContext();
-        context.OrderItems.Remove(orderitem!);
-        await context.SaveChangesAsync();
-        NavigationManager.NavigateTo("/orderitems");
+        NavigationManager.NavigateTo("/orderitems", replace: true);
+        return Task.CompletedTask;
     }
 }

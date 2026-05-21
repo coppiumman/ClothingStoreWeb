@@ -45,6 +45,14 @@ else
                     </InputSelect>
                     <ValidationMessage For="() => Stock.Size_Id" class="text-danger" />
                 </div>
+
+                @if (!string.IsNullOrWhiteSpace(createError))
+                {
+                    <div class="alert alert-danger">
+                        @createError
+                    </div>
+                }
+
                 <div class="mb-3">
                     <span class="text-danger">*</span>
                     <label for="stock_quantity" class="form-label">Количество на складе:</label> 
@@ -66,6 +74,7 @@ else
     private Stock Stock { get; set; } = default!;
     private List<Product> Products { get; set; } = new();
     private List<Size> Sizes { get; set; } = new();
+    private string? createError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -82,12 +91,37 @@ else
         Sizes = await context.Sizes.ToListAsync();
     }
 
-    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddStock()
     {
+        createError = null;
+
+        if (Stock.Product_Id == 0)
+        {
+            createError = "Выберите товар.";
+            return;
+        }
+
+        if (Stock.Size_Id == 0)
+        {
+            createError = "Выберите размер.";
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
+
+        var stockAlreadyExists = await context.Stocks.AnyAsync(stock =>
+            stock.Product_Id == Stock.Product_Id &&
+            stock.Size_Id == Stock.Size_Id);
+
+        if (stockAlreadyExists)
+        {
+            createError = "Запас для выбранного товара и размера уже существует. Измените количество в существующей записи.";
+            return;
+        }
+
         context.Stocks.Add(Stock);
         await context.SaveChangesAsync();
+
         NavigationManager.NavigateTo("/stocks");
     }
 }

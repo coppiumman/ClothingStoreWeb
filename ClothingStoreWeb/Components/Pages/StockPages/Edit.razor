@@ -24,30 +24,13 @@ else
                 <DataAnnotationsValidator />
                 <ValidationSummary role="alert"/>
                 <input type="hidden" name="Stock.Stock_Id" value="@Stock.Stock_Id" />
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="product_id" class="form-label">Товар:</label>
-                    <InputSelect id="product_id" @bind-Value="Stock.Product_Id" class="form-control" aria-required="true">
-                        <option value="0">Выберите товар</option>
-                        @foreach (var product in Products)
-                        {
-                            <option value="@product.Product_Id">@product.Product_Name</option>
-                        }
-                    </InputSelect>
-                    <ValidationMessage For="() => Stock.Product_Id" class="text-danger" />
-                </div>
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="size_id" class="form-label">Размер:</label>
-                    <InputSelect id="size_id" @bind-Value="Stock.Size_Id" class="form-control" aria-required="true">
-                        <option value="0">Выберите размер</option>
-                        @foreach (var size in Sizes)
-                        {
-                            <option value="@size.Size_Id">@size.Size_Name</option>
-                        }
-                    </InputSelect>
-                    <ValidationMessage For="() => Stock.Size_Id" class="text-danger" />
-                </div>
+                <dl class="row">
+                    <dt class="col-sm-4">Товар</dt>
+                    <dd class="col-sm-8">@Stock.Product?.Product_Name</dd>
+
+                    <dt class="col-sm-4">Размер</dt>
+                    <dd class="col-sm-8">@Stock.Size?.Size_Name</dd>
+                </dl>
                 <div class="mb-3">
                 <span class="text-danger">*</span>
                     <label for="stock_quantity" class="form-label">Количество на складе:</label>
@@ -70,8 +53,6 @@ else
 
     [SupplyParameterFromForm]
     private Stock? Stock { get; set; }
-    private List<Product> Products { get; set; } = new();
-    private List<Size> Sizes { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,10 +64,10 @@ else
 
         using var context = DbFactory.CreateDbContext();
 
-        Products = await context.Products.ToListAsync();
-        Sizes = await context.Sizes.ToListAsync();
-
-        Stock ??= await context.Stocks.FirstOrDefaultAsync(m => m.Stock_Id == Stock_Id);
+        Stock ??= await context.Stocks
+            .Include(s => s.Product)
+            .Include(s => s.Size)
+            .FirstOrDefaultAsync(m => m.Stock_Id == Stock_Id);
 
         if (Stock is null)
         {
@@ -94,12 +75,25 @@ else
         }
     }
 
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task UpdateStock()
     {
+        if (Stock is null)
+        {
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
-        context.Attach(Stock!).State = EntityState.Modified;
+
+        var stockFromDb = await context.Stocks
+            .FirstOrDefaultAsync(s => s.Stock_Id == Stock.Stock_Id);
+
+        if (stockFromDb is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        stockFromDb.Stock_Quantity = Stock.Stock_Quantity;
 
         try
         {
@@ -107,14 +101,13 @@ else
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!StockExists(Stock!.Stock_Id))
+            if (!StockExists(Stock.Stock_Id))
             {
                 NavigationManager.NavigateTo("notfound");
+                return;
             }
-            else
-            {
-                throw;
-            }
+
+            throw;
         }
 
         NavigationManager.NavigateTo("/stocks");

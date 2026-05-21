@@ -21,6 +21,8 @@
         <dl class="row">
             <dt class="col-sm-2">Заказ</dt>
             <dd class="col-sm-10">@(orderitem.Order is null ? $"Заказ №{orderitem.Order_Id}" : GetOrderDisplayName(orderitem.Order))</dd>
+            <dt class="col-sm-2">Статус заказа</dt>
+            <dd class="col-sm-10">@GetOrderStatusName(orderitem.Order?.Order_Status)</dd>
             <dt class="col-sm-2">Товар</dt>
             <dd class="col-sm-10">@(orderitem.Product?.Product_Name ?? orderitem.Product_Id.ToString())</dd>
             <dt class="col-sm-2">Размер</dt>
@@ -31,19 +33,13 @@
             <dd class="col-sm-10">@orderitem.OrderItem_Price</dd>
         </dl>
         <div>
-            @if (canEdit)
-            {
-                <a href="@($"/orderitems/edit?orderitem_id={orderitem.OrderItem_Id}")">Изменить</a>
-                <span> | </span>
-            }
-            <a href="@($"/orderitems")">Вернуться к списку</a>
+            <a href="/orderitems">Вернуться к списку</a>
         </div>
     }
 </div>
 
 @code {
     private OrderItem? orderitem;
-    private bool canEdit;
 
     [SupplyParameterFromQuery]
     private int OrderItem_Id { get; set; }
@@ -55,8 +51,6 @@
             NavigationManager.NavigateTo("/Account/AccessDenied");
             return;
         }
-
-        canEdit = await AccessService.CanEditAsync("OrderItems");
 
         using var context = DbFactory.CreateDbContext();
         orderitem = await context.OrderItems
@@ -72,4 +66,21 @@
     }
 
     private string GetOrderDisplayName(Order order) => $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy}";
+
+    private static string GetOrderStatusName(string? status)
+    {
+        return status switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "processing" => "В обработке",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => status ?? ""
+        };
+    }
 }

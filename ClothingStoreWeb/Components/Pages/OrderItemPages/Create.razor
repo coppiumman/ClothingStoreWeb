@@ -86,20 +86,10 @@ else
     private List<Product> Products { get; set; } = new();
     private List<Size> Sizes { get; set; } = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        if (!await AccessService.CanCreateAsync("OrderItems"))
-        {
-            NavigationManager.NavigateTo("/Account/AccessDenied");
-            return;
-        }
-
-        OrderItem ??= new();
-
-        using var context = DbFactory.CreateDbContext();
-        Orders = await context.Orders.ToListAsync();
-        Products = await context.Products.ToListAsync();
-        Sizes = await context.Sizes.ToListAsync();
+        NavigationManager.NavigateTo("/orderitems", replace: true);
+        return Task.CompletedTask;
     }
 
     private string GetOrderDisplayName(Order order) => $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy}";

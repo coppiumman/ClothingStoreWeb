@@ -1,5 +1,5 @@
 @page "/products/delete"
-@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@attribute [Authorize(Roles = "Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
@@ -23,27 +23,46 @@
         <dl class="row">
             <dt class="col-sm-2">Категория</dt>
             <dd class="col-sm-10">@product.Category?.Category_Name</dd>
-        </dl>
-        <dl class="row">
+
             <dt class="col-sm-2">Название товара</dt>
             <dd class="col-sm-10">@product.Product_Name</dd>
-        </dl>
-        <dl class="row">
+
             <dt class="col-sm-2">Описание товара</dt>
             <dd class="col-sm-10">@product.Product_Description</dd>
-        </dl>
-        <dl class="row">
+
             <dt class="col-sm-2">Цена</dt>
-            <dd class="col-sm-10">@product.Product_Price</dd>
-        </dl>
-        <dl class="row">
+            <dd class="col-sm-10">@product.Product_Price.ToString("N2") ₽</dd>
+
             <dt class="col-sm-2">Цвет</dt>
             <dd class="col-sm-10">@product.Product_Coloring</dd>
+
+            <dt class="col-sm-2">Статус</dt>
+            <dd class="col-sm-10">
+                @(product.Product_IsHidden ? "Скрыт из каталога" : "Отображается в каталоге")
+            </dd>
+
+            <dt class="col-sm-2">Изображение</dt>
+            <dd class="col-sm-10">
+                @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+                {
+                    <img src="@product.Product_ImagePath"
+                         alt="@product.Product_Name"
+                         class="product-service-image" />
+                }
+                else
+                {
+                    <span class="text-muted">Изображение не загружено</span>
+                }
+            </dd>
         </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Путь к изображению</dt>
-            <dd class="col-sm-10">@product.Product_ImagePath</dd>
-        </dl>
+
+        @if (!string.IsNullOrWhiteSpace(deleteError))
+        {
+            <div class="alert alert-danger">
+                @deleteError
+            </div>
+        }
+
         <EditForm method="post" Model="product" OnValidSubmit="DeleteProduct" FormName="delete" Enhance>
             <button type="submit" class="btn btn-danger" disabled="@(product is null)">Удалить</button> |
             <a href="/products">Вернуться к списку</a>
@@ -53,6 +72,7 @@
 
 @code {
     private Product? product;
+    private string? deleteError;
 
     [SupplyParameterFromQuery]
     private int Product_Id { get; set; }
@@ -78,9 +98,43 @@
 
     private async Task DeleteProduct()
     {
-        using var context = DbFactory.CreateDbContext();
-        context.Products.Remove(product!);
+        if (product is null)
+        {
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var productFromDb = await context.Products
+            .FirstOrDefaultAsync(p => p.Product_Id == product.Product_Id);
+
+        if (productFromDb is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        var isUsedInOrders = await context.OrderItems
+            .AnyAsync(orderItem => orderItem.Product_Id == productFromDb.Product_Id);
+
+        if (isUsedInOrders)
+        {
+            deleteError = "Удаление невозможно: товар уже используется в заказах. Скройте товар вместо удаления.";
+            return;
+        }
+
+        var hasStocks = await context.Stocks
+            .AnyAsync(stock => stock.Product_Id == productFromDb.Product_Id);
+
+        if (hasStocks)
+        {
+            deleteError = "Удаление невозможно: для товара существуют складские записи. Скройте товар вместо удаления.";
+            return;
+        }
+
+        context.Products.Remove(productFromDb);
         await context.SaveChangesAsync();
+
         NavigationManager.NavigateTo("/products");
     }
 }

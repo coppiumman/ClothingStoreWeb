@@ -13,14 +13,10 @@
 
 <h1>Заказы</h1>
 
-@if (canCreate)
-{
-    <p>
-        <a href="orders/create">Добавить</a>
-    </p>
-}
-
 <QuickGrid Class="table" Items="orders">
+    <TemplateColumn Title="Номер заказа">
+        Заказ №@context.Order_Id
+    </TemplateColumn>
     <TemplateColumn Title="Пользователь">
         @GetUserDisplayName(context.User)
     </TemplateColumn>

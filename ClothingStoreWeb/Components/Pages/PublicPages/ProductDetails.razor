@@ -269,7 +269,9 @@ else
         product = await context.Products
             .Include(product => product.Category)
             .AsNoTracking()
-            .FirstOrDefaultAsync(product => product.Product_Id == ProductId);
+            .FirstOrDefaultAsync(product =>
+                product.Product_Id == ProductId &&
+                !product.Product_IsHidden);
 
         if (product is null)
         {

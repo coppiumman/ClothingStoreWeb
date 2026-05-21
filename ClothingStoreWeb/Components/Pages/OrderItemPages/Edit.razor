@@ -90,24 +90,10 @@ else
     private List<Product> Products { get; set; } = new();
     private List<Size> Sizes { get; set; } = new();
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        if (!await AccessService.CanEditAsync("OrderItems"))
-        {
-            NavigationManager.NavigateTo("/Account/AccessDenied");
-            return;
-        }
-
-        using var context = DbFactory.CreateDbContext();
-        OrderItem ??= await context.OrderItems.FirstOrDefaultAsync(m => m.OrderItem_Id == OrderItem_Id);
-        Orders = await context.Orders.ToListAsync();
-        Products = await context.Products.ToListAsync();
-        Sizes = await context.Sizes.ToListAsync();
-
-        if (OrderItem is null)
-        {
-            NavigationManager.NavigateTo("notfound");
-        }
+        NavigationManager.NavigateTo("/orderitems", replace: true);
+        return Task.CompletedTask;
     }
 
     private string GetOrderDisplayName(Order order) => $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy}";

@@ -30,6 +30,22 @@ namespace ClothingStoreWeb.Models
 
         public DateTime? Order_StatusChangedAt { get; set; }
 
+        public string? Order_RecipientName { get; set; }
+
+        public string? Order_RecipientPhone { get; set; }
+
+        public string? Order_RecipientEmail { get; set; }
+
+        public string? Order_DeliveryMethod { get; set; }
+
+        public string? Order_DeliveryAddress { get; set; }
+
+        public decimal Order_DeliveryAmount { get; set; }
+
+        public string? Order_PaymentMethod { get; set; }
+
+        public string? Order_Comment { get; set; }
+
         public ApplicationUser? User { get; set; }
 
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();

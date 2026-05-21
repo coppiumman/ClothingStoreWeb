@@ -26,6 +26,21 @@ namespace ClothingStoreWeb.Data
             builder.Entity<OrderItem>().ToTable("OrderItems");
             builder.Entity<Employee>().ToTable("Employees");
 
+            builder.Entity<Order>()
+                .Property(o => o.Order_TotalAmount)
+                .HasColumnType("decimal(18,2)");
+
+            builder.Entity<Order>()
+                .Property(o => o.Order_DeliveryAmount)
+                .HasColumnType("decimal(18,2)");
+
+            builder.Entity<OrderItem>()
+                .Property(oi => oi.OrderItem_Price)
+                .HasColumnType("decimal(18,2)");
+
+            builder.Entity<Product>()
+                .Property(p => p.Product_Price)
+                .HasColumnType("decimal(18,2)");
             builder.Entity<Product>()
                 .HasOne(p => p.Category)
                 .WithMany(c => c.Products)

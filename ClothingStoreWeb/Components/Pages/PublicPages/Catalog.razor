@@ -529,7 +529,10 @@
 
         colors = await context.Products
             .AsNoTracking()
-            .Where(product => product.Product_Coloring != null && product.Product_Coloring != "")
+            .Where(product =>
+                !product.Product_IsHidden &&
+                product.Product_Coloring != null &&
+                product.Product_Coloring != "")
             .Select(product => product.Product_Coloring!)
             .Distinct()
             .OrderBy(color => color)
@@ -547,9 +550,11 @@
         var query = context.Stocks
             .Include(stock => stock.Product)
             .AsNoTracking()
-            .Where(stock => stock.Stock_Quantity > 0 && stock.Product != null)
+            .Where(stock =>
+                stock.Stock_Quantity > 0 &&
+                stock.Product != null &&
+                !stock.Product.Product_IsHidden)
             .AsQueryable();
-
         if (selectedCategoryId is not null)
         {
             query = query.Where(stock => stock.Product!.Category_Id == selectedCategoryId);
@@ -606,7 +611,10 @@
         var query = context.Stocks
             .Include(stock => stock.Product)
             .AsNoTracking()
-            .Where(stock => stock.Stock_Quantity > 0 && stock.Product != null)
+            .Where(stock =>
+                stock.Stock_Quantity > 0 &&
+                stock.Product != null &&
+                !stock.Product.Product_IsHidden)
             .AsQueryable();
 
         if (selectedCategoryId is not null)
@@ -667,7 +675,8 @@
 
         var query = context.Products
             .Include(product => product.Category)
-            .AsNoTracking();
+            .Where(product => !product.Product_IsHidden)
+            .AsQueryable();
 
         if (selectedCategoryId is not null)
         {

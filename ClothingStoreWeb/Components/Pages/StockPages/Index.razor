@@ -4,10 +4,12 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
 @using ClothingStoreWeb.Data
+@using Microsoft.AspNetCore.Components.Authorization
 @implements IAsyncDisposable
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Запасы</PageTitle>
 
@@ -36,8 +38,10 @@
             <a href="@($"stocks/edit?stock_id={stock.Stock_Id}")">Изменить</a>
             <span> | </span>
         }
+
         <a href="@($"stocks/details?stock_id={stock.Stock_Id}")">Подробнее</a>
-        @if (canDelete)
+
+        @if (isAdmin && canDelete)
         {
             <span> | </span>
             <a href="@($"stocks/delete?stock_id={stock.Stock_Id}")">Удалить</a>
@@ -51,6 +55,7 @@
     private bool canCreate;
     private bool canEdit;
     private bool canDelete;
+    private bool isAdmin;
 
     protected override async Task OnInitializedAsync()
     {
@@ -60,9 +65,12 @@
             return;
         }
 
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isAdmin = authState.User.IsInRole("Администратор");
+
         canCreate = await AccessService.CanCreateAsync("Stocks");
         canEdit = await AccessService.CanEditAsync("Stocks");
-        canDelete = await AccessService.CanDeleteAsync("Stocks");
+        canDelete = isAdmin && await AccessService.CanDeleteAsync("Stocks");
 
         context = DbFactory.CreateDbContext();
         stocks = context.Stocks

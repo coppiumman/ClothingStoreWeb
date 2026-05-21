@@ -18,24 +18,95 @@
     {
         <p><em>Загрузка...</em></p>
     }
-    else {
+    else
+    {
         <dl class="row">
-            <dt class="col-sm-2">Пользователь</dt>
-            <dd class="col-sm-10">@GetUserDisplayName(order.User)</dd>
-            <dt class="col-sm-2">Дата заказа</dt>
-            <dd class="col-sm-10">@order.Order_Date</dd>
-            <dt class="col-sm-2">Статус заказа</dt>
-            <dd class="col-sm-10">@GetOrderStatusName(order.Order_Status)</dd>
-            <dt class="col-sm-2">Сумма заказа</dt>
-            <dd class="col-sm-10">@order.Order_TotalAmount</dd>
+            <dt class="col-sm-3">Номер заказа</dt>
+            <dd class="col-sm-9">Заказ №@order.Order_Id</dd>
+
+            <dt class="col-sm-3">Пользователь</dt>
+            <dd class="col-sm-9">@GetUserDisplayName(order.User)</dd>
+
+            <dt class="col-sm-3">Дата заказа</dt>
+            <dd class="col-sm-9">@order.Order_Date.ToString("dd.MM.yyyy HH:mm")</dd>
+
+            <dt class="col-sm-3">Статус заказа</dt>
+            <dd class="col-sm-9">@GetOrderStatusName(order.Order_Status)</dd>
+
+            <dt class="col-sm-3">Сумма заказа</dt>
+            <dd class="col-sm-9">@order.Order_TotalAmount.ToString("N2") ₽</dd>
         </dl>
+
+        <h3>Данные получателя</h3>
+        <dl class="row">
+            <dt class="col-sm-3">ФИО</dt>
+            <dd class="col-sm-9">@GetTextOrEmpty(order.Order_RecipientName)</dd>
+
+            <dt class="col-sm-3">Телефон</dt>
+            <dd class="col-sm-9">@GetTextOrEmpty(order.Order_RecipientPhone)</dd>
+
+            <dt class="col-sm-3">Email</dt>
+            <dd class="col-sm-9">@GetTextOrEmpty(order.Order_RecipientEmail)</dd>
+        </dl>
+
+        <h3>Доставка и оплата</h3>
+        <dl class="row">
+            <dt class="col-sm-3">Способ доставки</dt>
+            <dd class="col-sm-9">@GetDeliveryMethodName(order.Order_DeliveryMethod)</dd>
+
+            <dt class="col-sm-3">Адрес доставки</dt>
+            <dd class="col-sm-9">@GetTextOrEmpty(order.Order_DeliveryAddress)</dd>
+
+            <dt class="col-sm-3">Стоимость доставки</dt>
+            <dd class="col-sm-9">@order.Order_DeliveryAmount.ToString("N2") ₽</dd>
+
+            <dt class="col-sm-3">Способ оплаты</dt>
+            <dd class="col-sm-9">@GetPaymentMethodName(order.Order_PaymentMethod)</dd>
+
+            <dt class="col-sm-3">Комментарий</dt>
+            <dd class="col-sm-9">@GetTextOrEmpty(order.Order_Comment)</dd>
+        </dl>
+
+        <h3>Позиции заказа</h3>
+
+        @if (order.OrderItems.Any())
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Товар</th>
+                        <th>Размер</th>
+                        <th>Количество</th>
+                        <th>Цена позиции</th>
+                        <th>Сумма</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in order.OrderItems)
+                    {
+                        <tr>
+                            <td>@(item.Product?.Product_Name ?? item.Product_Id.ToString())</td>
+                            <td>@(item.Size?.Size_Name ?? item.Size_Id.ToString())</td>
+                            <td>@item.OrderItem_Quantity</td>
+                            <td>@item.OrderItem_Price.ToString("N2") ₽</td>
+                            <td>@((item.OrderItem_Quantity * item.OrderItem_Price).ToString("N2")) ₽</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>Позиции заказа не найдены.</p>
+        }
+
         <div>
             @if (canEdit)
             {
-                <a href="@($"/orders/edit?order_id={order.Order_Id}")">Изменить</a>
+                <a href="@($"/orders/edit?id={order.Order_Id}")">Изменить</a>
                 <span> | </span>
             }
-            <a href="@($"/orders")">Вернуться к списку</a>
+            <a href="/orders">Вернуться к списку</a>
         </div>
     }
 </div>
@@ -60,6 +131,10 @@
         using var context = DbFactory.CreateDbContext();
         order = await context.Orders
             .Include(o => o.User)
+            .Include(o => o.OrderItems)
+                .ThenInclude(orderItem => orderItem.Product)
+            .Include(o => o.OrderItems)
+                .ThenInclude(orderItem => orderItem.Size)
             .FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
 
         if (order is null)
@@ -96,6 +171,34 @@
             "cancelled" => "Отменён",
             "returned" => "Возврат",
             _ => status ?? ""
+        };
+    }
+
+    private static string GetTextOrEmpty(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? "Не указано"
+            : value;
+    }
+
+    private static string GetDeliveryMethodName(string? deliveryMethod)
+    {
+        return deliveryMethod switch
+        {
+            "pickup" => "Самовывоз",
+            "courier" => "Курьерская доставка",
+            "point" => "Пункт выдачи",
+            _ => "Не указано"
+        };
+    }
+
+    private static string GetPaymentMethodName(string? paymentMethod)
+    {
+        return paymentMethod switch
+        {
+            "cash" => "Оплата при получении",
+            "card" => "Банковской картой при получении",
+            _ => "Не указано"
         };
     }
 }
