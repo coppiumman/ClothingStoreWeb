@@ -2,13 +2,13 @@ name: .NET Build and Test
 
 on:
   push:
-    branches: [ "master" ] # Запуск при каждом пуше в вашу ветку master
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Используем бесплатный Linux-сервер
+    runs-on: ubuntu-latest
 
     steps:
     - name: Скачиваем код проекта
@@ -17,7 +17,7 @@ jobs:
     - name: Настраиваем .NET SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0' # Укажите вашу версию .NET (например, 6.0, 7.0 или 8.0)
+        dotnet-version: '9.0'
 
     - name: Восстанавливаем зависимости (Nuget)
       run: dotnet restore ClothingStoreWeb.sln
