@@ -17,7 +17,7 @@ jobs:
     - name: Настраиваем .NET SDK
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0' # Укажите вашу версию .NET (например, 6.0, 7.0 или 8.0)
+        dotnet-version: '9.0' # Укажите вашу версию .NET (например, 6.0, 7.0 или 8.0)
 
     - name: Восстанавливаем зависимости (Nuget)
       run: dotnet restore ClothingStoreWeb.sln
