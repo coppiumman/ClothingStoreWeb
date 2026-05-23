@@ -6,29 +6,45 @@
 @using ClothingStoreWeb.Models
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Globalization
+@using Microsoft.JSInterop
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Каталог товаров</PageTitle>
 
 @if (categories.Count > 0)
 {
     <div class="catalog-toolbar">
-        <div class="catalog-category-list">
+        <div class="catalog-category-carousel @(canScrollCategories ? "can-scroll" : "no-scroll")">
             <button type="button"
-                    class="catalog-category-button @(selectedCategoryId is null ? "active" : "")"
-                    @onclick="ShowAllCategories">
-                Смотреть все
+                    class="catalog-category-arrow catalog-category-arrow-left"
+                    @onclick="ScrollCategoriesLeft">
+                ‹
             </button>
 
-            @foreach (var category in categories)
-            {
+            <div class="catalog-category-list" @ref="categoryListRef">
                 <button type="button"
-                        class="catalog-category-button @(selectedCategoryId == category.Category_Id ? "active" : "")"
-                        @onclick="() => SelectCategory(category.Category_Id)">
-                    @category.Category_Name
+                        class="catalog-category-button @(selectedCategoryId is null ? "active" : "")"
+                        @onclick="ShowAllCategories">
+                    Смотреть все
                 </button>
-            }
+
+                @foreach (var category in categories)
+                {
+                    <button type="button"
+                            class="catalog-category-button @(selectedCategoryId == category.Category_Id ? "active" : "")"
+                            @onclick="() => SelectCategory(category.Category_Id)">
+                        @category.Category_Name
+                    </button>
+                }
+            </div>
+
+            <button type="button"
+                    class="catalog-category-arrow catalog-category-arrow-right"
+                    @onclick="ScrollCategoriesRight">
+                ›
+            </button>
         </div>
 
         <div class="catalog-actions">
@@ -189,7 +205,6 @@
             </div>
         </div>
     </div>
-
 }
 
 @if (ActiveFilterCount > 0)
@@ -335,6 +350,9 @@
     private HashSet<int> draftSizeIds = new();
     private decimal? draftMinPrice;
     private decimal? draftMaxPrice;
+
+    private ElementReference categoryListRef;
+    private bool canScrollCategories = true;
 
     private string? filterErrorMessage;
     
@@ -513,13 +531,19 @@
         await LoadProductsAsync();
     }
 
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return Task.CompletedTask;
+    }
+
     private async Task LoadCategoriesAsync()
     {
         await using var context = await DbFactory.CreateDbContextAsync();
 
         categories = await context.Categories
             .AsNoTracking()
-            .OrderBy(category => category.Category_Name)
+            .OrderBy(category => category.Category_DisplayOrder)
+            .ThenBy(category => category.Category_Id)
             .ToListAsync();
     }
 
@@ -1031,5 +1055,15 @@
         await LoadAvailableColorsAsync();
         await LoadAvailableSizesAsync();
         await LoadProductsAsync();
+    }
+
+    private async Task ScrollCategoriesLeft()
+    {
+        await JSRuntime.InvokeVoidAsync("catalogCategories.scroll", categoryListRef, -320);
+    }
+
+    private async Task ScrollCategoriesRight()
+    {
+        await JSRuntime.InvokeVoidAsync("catalogCategories.scroll", categoryListRef, 320);
     }
 }

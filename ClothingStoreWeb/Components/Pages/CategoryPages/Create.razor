@@ -62,8 +62,16 @@ else
     private async Task AddCategory()
     {
         using var context = DbFactory.CreateDbContext();
+
+        var maxDisplayOrder = await context.Categories
+            .Select(category => (int?)category.Category_DisplayOrder)
+            .MaxAsync() ?? 0;
+
+        Category.Category_DisplayOrder = maxDisplayOrder + 1;
+
         context.Categories.Add(Category);
         await context.SaveChangesAsync();
+
         NavigationManager.NavigateTo("/categories");
     }
 }

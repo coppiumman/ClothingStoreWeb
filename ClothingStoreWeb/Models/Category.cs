@@ -17,6 +17,9 @@ namespace ClothingStoreWeb.Models
         [StringLength(500, ErrorMessage = "Описание категории не должно превышать 500 символов")]
         public string? Category_Description { get; set; }
 
+        [Display(Name = "Порядок отображения")]
+        public int Category_DisplayOrder { get; set; }
+
         public ICollection<Product> Products { get; set; } = new List<Product>();
     }
 }

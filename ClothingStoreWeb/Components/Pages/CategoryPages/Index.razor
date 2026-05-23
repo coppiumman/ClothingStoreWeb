@@ -25,10 +25,25 @@
 <QuickGrid Class="table" Items="categories">
     <PropertyColumn Property="category => category.Category_Name" Title="Название категории" />
     <PropertyColumn Property="category => category.Category_Description" Title="Описание категории" />
+    <PropertyColumn Property="category => category.Category_DisplayOrder" Title="Порядок" />
 
     <TemplateColumn Context="category">
         @if (canEdit)
         {
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @onclick="() => MoveCategoryUp(category.Category_Id)">
+                ↑
+            </button>
+
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @onclick="() => MoveCategoryDown(category.Category_Id)">
+                ↓
+            </button>
+
+            <span> | </span>
+
             <a href="@($"categories/edit?category_id={category.Category_Id}")">Изменить</a>
             <span> | </span>
         }
@@ -65,9 +80,62 @@
         canDelete = isAdmin && await AccessService.CanDeleteAsync("Categories");
 
         context = DbFactory.CreateDbContext();
+
         categories = context.Categories
             .AsNoTracking()
-            .OrderBy(category => category.Category_Id);
+            .OrderBy(category => category.Category_DisplayOrder)
+            .ThenBy(category => category.Category_Id);
+    }
+
+    private async Task MoveCategoryUp(int categoryId)
+    {
+        await MoveCategory(categoryId, -1);
+    }
+
+    private async Task MoveCategoryDown(int categoryId)
+    {
+        await MoveCategory(categoryId, 1);
+    }
+
+    private async Task MoveCategory(int categoryId, int direction)
+    {
+        await using var dbContext = await DbFactory.CreateDbContextAsync();
+
+        var categoriesList = await dbContext.Categories
+            .OrderBy(category => category.Category_DisplayOrder)
+            .ThenBy(category => category.Category_Id)
+            .ToListAsync();
+
+        for (var index = 0; index < categoriesList.Count; index++)
+        {
+            categoriesList[index].Category_DisplayOrder = index + 1;
+        }
+
+        var currentIndex = categoriesList.FindIndex(category => category.Category_Id == categoryId);
+
+        if (currentIndex < 0)
+        {
+            return;
+        }
+
+        var newIndex = currentIndex + direction;
+
+        if (newIndex < 0 || newIndex >= categoriesList.Count)
+        {
+            return;
+        }
+
+        (categoriesList[currentIndex].Category_DisplayOrder, categoriesList[newIndex].Category_DisplayOrder) =
+            (categoriesList[newIndex].Category_DisplayOrder, categoriesList[currentIndex].Category_DisplayOrder);
+
+        await dbContext.SaveChangesAsync();
+
+        categories = context!.Categories
+            .AsNoTracking()
+            .OrderBy(category => category.Category_DisplayOrder)
+            .ThenBy(category => category.Category_Id);
+
+        StateHasChanged();
     }
 
     public async ValueTask DisposeAsync()

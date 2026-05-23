@@ -10,11 +10,45 @@
     margin-bottom: 24px;
 }
 
+.catalog-category-carousel {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+}
+
 .catalog-category-list {
     display: flex;
-    flex-wrap: wrap;
     gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    min-width: 0;
 }
+
+    .catalog-category-list::-webkit-scrollbar {
+        display: none;
+    }
+
+.catalog-category-arrow {
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    color: #222;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+    .catalog-category-arrow:hover {
+        color: #777;
+    }
 
 .catalog-category-button {
     border: none;
@@ -24,6 +58,7 @@
     font-size: 14px;
     line-height: 1;
     cursor: pointer;
+    white-space: nowrap;
     transition: background 0.2s ease, color 0.2s ease;
 }
 
@@ -537,3 +572,73 @@
         .catalog-color-option.disabled input {
             cursor: not-allowed;
         }
+
+
+
+.catalog-category-carousel.no-scroll {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+    .catalog-category-carousel.no-scroll .catalog-category-arrow {
+        display: none;
+    }
+
+.catalog-category-carousel.can-scroll {
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+}
+
+@media (max-width: 480px) {
+    .catalog-toolbar {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    .catalog-category-carousel {
+        width: 100%;
+        min-width: 0;
+    }
+
+        .catalog-category-carousel.no-scroll {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .catalog-category-carousel.can-scroll {
+            grid-template-columns: 26px minmax(0, 1fr) 26px;
+            gap: 6px;
+        }
+
+        .catalog-category-carousel.no-scroll .catalog-category-arrow {
+            display: none;
+        }
+
+        .catalog-category-carousel.can-scroll .catalog-category-arrow {
+            display: block;
+            width: 26px;
+            height: 30px;
+            padding: 0;
+            font-size: 22px;
+        }
+
+    .catalog-category-list {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .catalog-actions {
+        width: 100%;
+        display: flex;
+        justify-content: flex-start;
+        gap: 18px;
+    }
+
+    .catalog-action-button {
+        white-space: nowrap;
+    }
+}
