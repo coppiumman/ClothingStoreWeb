@@ -16,7 +16,7 @@
 @if (categories.Count > 0)
 {
     <div class="catalog-toolbar">
-        <div class="catalog-category-carousel @(canScrollCategories ? "can-scroll" : "no-scroll")">
+        <div class="catalog-category-carousel can-scroll">
             <button type="button"
                     class="catalog-category-arrow catalog-category-arrow-left"
                     @onclick="ScrollCategoriesLeft">
@@ -352,7 +352,6 @@
     private decimal? draftMaxPrice;
 
     private ElementReference categoryListRef;
-    private bool canScrollCategories = true;
 
     private string? filterErrorMessage;
     

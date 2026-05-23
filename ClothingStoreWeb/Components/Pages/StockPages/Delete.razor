@@ -42,7 +42,7 @@
 
         <EditForm method="post" Model="stock" OnValidSubmit="DeleteStock" FormName="delete" Enhance>
             <button type="submit" class="btn btn-danger" disabled="@(stock is null)">Удалить</button> |
-            <a href="/stocks">Вернуться к списку</a>
+            <a href="@BackUrl">Вернуться к списку</a>
         </EditForm>
     }
 </div>
@@ -105,6 +105,13 @@
         context.Stocks.Remove(stockFromDb);
         await context.SaveChangesAsync();
 
-        NavigationManager.NavigateTo("/stocks");
+        NavigationManager.NavigateTo(BackUrl);
     }
+
+    [SupplyParameterFromQuery]
+    private int? Category_Id { get; set; }
+
+    private string BackUrl => Category_Id is null or 0
+        ? "/stocks"
+        : $"/stocks?category_id={Category_Id}";
 }

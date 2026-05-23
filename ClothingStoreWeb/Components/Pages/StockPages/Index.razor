@@ -14,44 +14,75 @@
 <PageTitle>Запасы</PageTitle>
 
 <h1>Запасы</h1>
-    
-@if (canCreate)
+
+@if (SelectedCategory is null)
 {
+    <p>Выберите категорию, чтобы посмотреть запасы товаров.</p>
+
+    <QuickGrid Class="table" Items="categories">
+        <PropertyColumn Property="category => category.Category_Name" Title="Категория" />
+        <PropertyColumn Property="category => category.Category_Description" Title="Описание" />
+
+        <TemplateColumn Context="category">
+            <a href="@($"/stocks?category_id={category.Category_Id}")">Открыть запасы</a>
+        </TemplateColumn>
+    </QuickGrid>
+}
+else
+{
+    <h2>@SelectedCategory.Category_Name</h2>
+
     <p>
-        <a href="stocks/create">Добавить</a>
+        <a href="/stocks">Вернуться к категориям</a>
     </p>
+
+    @if (canCreate)
+    {
+        <p>
+            <a href="@($"/stocks/create?category_id={SelectedCategory.Category_Id}")">Добавить запас</a>
+        </p>
+    }
+
+    <QuickGrid Class="table" Items="stocks">
+        <TemplateColumn Title="Товар">
+            @context.Product?.Product_Name
+        </TemplateColumn>
+
+        <TemplateColumn Title="Размер">
+            @context.Size?.Size_Name
+        </TemplateColumn>
+
+        <PropertyColumn Property="stock => stock.Stock_Quantity" Title="Количество на складе" />
+
+        <TemplateColumn Context="stock">
+            @if (canEdit)
+            {
+                <a href="@($"/stocks/edit?stock_id={stock.Stock_Id}&category_id={SelectedCategory.Category_Id}")">Изменить</a>
+                <span> | </span>
+            }
+
+            <a href="@($"/stocks/details?stock_id={stock.Stock_Id}&category_id={SelectedCategory.Category_Id}")">Подробнее</a>
+
+            @if (isAdmin && canDelete)
+            {
+                <span> | </span>
+                <a href="@($"/stocks/delete?stock_id={stock.Stock_Id}&category_id={SelectedCategory.Category_Id}")">Удалить</a>
+            }
+        </TemplateColumn>
+    </QuickGrid>
 }
 
-<QuickGrid Class="table" Items="stocks">
-    <TemplateColumn Title="Товар">
-        @context.Product?.Product_Name
-    </TemplateColumn>
-
-    <TemplateColumn Title="Размер">
-        @context.Size?.Size_Name
-    </TemplateColumn>
-    <PropertyColumn Property="stock => stock.Stock_Quantity" Title="Количество на складе" />
-
-    <TemplateColumn Context="stock">
-        @if (canEdit)
-        {
-            <a href="@($"stocks/edit?stock_id={stock.Stock_Id}")">Изменить</a>
-            <span> | </span>
-        }
-
-        <a href="@($"stocks/details?stock_id={stock.Stock_Id}")">Подробнее</a>
-
-        @if (isAdmin && canDelete)
-        {
-            <span> | </span>
-            <a href="@($"stocks/delete?stock_id={stock.Stock_Id}")">Удалить</a>
-        }
-    </TemplateColumn>
-</QuickGrid>
-
 @code {
+    [SupplyParameterFromQuery]
+    private int? Category_Id { get; set; }
+
     private ApplicationDbContext? context;
+
+    private IQueryable<Category> categories = Enumerable.Empty<Category>().AsQueryable();
     private IQueryable<Stock> stocks = Enumerable.Empty<Stock>().AsQueryable();
+
+    private Category? SelectedCategory;
+
     private bool canCreate;
     private bool canEdit;
     private bool canDelete;
@@ -73,11 +104,46 @@
         canDelete = isAdmin && await AccessService.CanDeleteAsync("Stocks");
 
         context = DbFactory.CreateDbContext();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (context is null)
+        {
+            return;
+        }
+
+        SelectedCategory = null;
+        categories = Enumerable.Empty<Category>().AsQueryable();
+        stocks = Enumerable.Empty<Stock>().AsQueryable();
+
+        if (Category_Id is null or 0)
+        {
+            categories = context.Categories
+                .AsNoTracking()
+                .OrderBy(category => category.Category_DisplayOrder)
+                .ThenBy(category => category.Category_Name);
+
+            return;
+        }
+
+        SelectedCategory = await context.Categories
+            .AsNoTracking()
+            .FirstOrDefaultAsync(category => category.Category_Id == Category_Id);
+
+        if (SelectedCategory is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
         stocks = context.Stocks
             .Include(stock => stock.Product)
             .Include(stock => stock.Size)
             .AsNoTracking()
-            .OrderBy(stock => stock.Stock_Id);
+            .Where(stock => stock.Product != null && stock.Product.Category_Id == Category_Id)
+            .OrderBy(stock => stock.Product!.Product_Name)
+            .ThenBy(stock => stock.Size!.Size_Name);
     }
 
     public async ValueTask DisposeAsync()

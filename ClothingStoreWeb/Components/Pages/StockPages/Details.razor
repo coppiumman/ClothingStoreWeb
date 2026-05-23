@@ -29,10 +29,10 @@
         <div>
             @if (canEdit)
             {
-                <a href="@($"/stocks/edit?stock_id={stock.Stock_Id}")">Изменить</a>
+                <a href="@($"/stocks/edit?stock_id={stock.Stock_Id}&category_id={Category_Id}")">Изменить</a>
                 <span> | </span>
             }
-            <a href="@($"/stocks")">Вернуться к списку</a>
+            <a href="@BackUrl">Вернуться к списку</a>
         </div>
     }
 </div>
@@ -65,4 +65,11 @@
             NavigationManager.NavigateTo("notfound");
         }
     }
+
+    [SupplyParameterFromQuery]
+    private int? Category_Id { get; set; }
+
+    private string BackUrl => Category_Id is null or 0
+        ? "/stocks"
+        : $"/stocks?category_id={Category_Id}";
 }

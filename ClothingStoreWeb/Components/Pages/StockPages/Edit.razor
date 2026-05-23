@@ -44,7 +44,7 @@ else
 }
 
 <div>
-    <a href="/stocks">Вернуться к списку</a>
+    <a href="@BackUrl">Вернуться к списку</a>
 </div>
 
 @code {
@@ -110,7 +110,7 @@ else
             throw;
         }
 
-        NavigationManager.NavigateTo("/stocks");
+        NavigationManager.NavigateTo(BackUrl);
     }
 
     private bool StockExists(int stock_id)
@@ -118,4 +118,11 @@ else
         using var context = DbFactory.CreateDbContext();
         return context.Stocks.Any(e => e.Stock_Id == stock_id);
     }
+
+    [SupplyParameterFromQuery]
+    private int? Category_Id { get; set; }
+
+    private string BackUrl => Category_Id is null or 0
+        ? "/stocks"
+        : $"/stocks?category_id={Category_Id}";
 }

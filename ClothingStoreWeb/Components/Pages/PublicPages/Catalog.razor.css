@@ -587,58 +587,22 @@
     grid-template-columns: 34px minmax(0, 1fr) 34px;
 }
 
-@media (max-width: 480px) {
-    .catalog-toolbar {
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 16px;
-    }
-
+@media (max-width: 765px) {
     .catalog-category-carousel {
+        display: block;
         width: 100%;
-        min-width: 0;
     }
 
-        .catalog-category-carousel.no-scroll {
-            grid-template-columns: minmax(0, 1fr);
-        }
-
-        .catalog-category-carousel.can-scroll {
-            grid-template-columns: 26px minmax(0, 1fr) 26px;
-            gap: 6px;
-        }
-
-        .catalog-category-carousel.no-scroll .catalog-category-arrow {
-            display: none;
-        }
-
-        .catalog-category-carousel.can-scroll .catalog-category-arrow {
-            display: block;
-            width: 26px;
-            height: 30px;
-            padding: 0;
-            font-size: 22px;
-        }
+    .catalog-category-arrow {
+        display: none;
+    }
 
     .catalog-category-list {
         width: 100%;
         max-width: 100%;
         overflow-x: auto;
         overflow-y: hidden;
-        padding-bottom: 4px;
-        scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
-    }
-
-    .catalog-actions {
-        width: 100%;
-        display: flex;
-        justify-content: flex-start;
-        gap: 18px;
-    }
-
-    .catalog-action-button {
-        white-space: nowrap;
+        scrollbar-width: none;
     }
 }

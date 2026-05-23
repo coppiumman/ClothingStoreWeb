@@ -11,6 +11,12 @@
 <h1>Добавление</h1>
 
 <h2>Запас</h2>
+
+@if (SelectedCategory is not null)
+{
+    <p>Категория: <strong>@SelectedCategory.Category_Name</strong></p>
+}
+
 <hr />
 @if (Stock is null)
 {
@@ -66,7 +72,7 @@ else
 }
 
 <div>
-    <a href="/stocks">Вернуться к списку</a>
+    <a href="@($"/stocks?category_id={Category_Id}")">Вернуться к списку</a>
 </div>
 
 @code {
@@ -87,8 +93,30 @@ else
         Stock ??= new();
 
         using var context = DbFactory.CreateDbContext();
-        Products = await context.Products.ToListAsync();
-        Sizes = await context.Sizes.ToListAsync();
+        if (Category_Id == 0)
+        {
+            NavigationManager.NavigateTo("/stocks");
+            return;
+        }
+
+        SelectedCategory = await context.Categories
+            .AsNoTracking()
+            .FirstOrDefaultAsync(category => category.Category_Id == Category_Id);
+
+        if (SelectedCategory is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        Products = await context.Products
+            .Where(product => product.Category_Id == Category_Id)
+            .OrderBy(product => product.Product_Name)
+            .ToListAsync();
+
+        Sizes = await context.Sizes
+            .OrderBy(size => size.Size_Name)
+            .ToListAsync();
     }
 
     private async Task AddStock()
@@ -122,6 +150,11 @@ else
         context.Stocks.Add(Stock);
         await context.SaveChangesAsync();
 
-        NavigationManager.NavigateTo("/stocks");
+        NavigationManager.NavigateTo($"/stocks?category_id={Category_Id}");
     }
+
+    [SupplyParameterFromQuery]
+    private int Category_Id { get; set; }
+
+    private Category? SelectedCategory;
 }
