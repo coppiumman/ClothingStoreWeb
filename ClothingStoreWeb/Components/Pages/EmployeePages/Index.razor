@@ -4,12 +4,23 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
 @using ClothingStoreWeb.Data
+@using ClosedXML.Excel
+@using Microsoft.JSInterop
 @implements IAsyncDisposable
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Сотрудники</PageTitle>
 
 <h1>Сотрудники</h1>
+
+<div class="mb-3">
+    <button type="button"
+            class="btn btn-outline-success"
+            @onclick="ExportEmployeesToExcelAsync">
+        Экспорт в Excel
+    </button>
+</div>
 
 <p>
     <a href="employees/create">Добавить</a>
@@ -57,5 +68,64 @@
             return user.Email;
 
         return user.Id;
+    }
+
+    private async Task DownloadExcelAsync(XLWorkbook workbook, string fileName)
+    {
+        using var stream = new MemoryStream();
+
+        workbook.SaveAs(stream);
+
+        var fileBytes = stream.ToArray();
+        var base64 = Convert.ToBase64String(fileBytes);
+
+        await JSRuntime.InvokeVoidAsync(
+            "downloadFileFromBytes",
+            fileName,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            base64);
+    }
+
+    private async Task ExportEmployeesToExcelAsync()
+    {
+        await using var dbContext = await DbFactory.CreateDbContextAsync();
+
+        var employeesForExport = await dbContext.Employees
+            .Include(employee => employee.User)
+            .AsNoTracking()
+            .OrderBy(employee => employee.Employee_Id)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Сотрудники");
+
+        worksheet.Cell(1, 1).Value = "Пользователь";
+        worksheet.Cell(1, 2).Value = "Email";
+        worksheet.Cell(1, 3).Value = "Должность";
+        worksheet.Cell(1, 4).Value = "Зарплата";
+        worksheet.Cell(1, 5).Value = "Дата приёма на работу";
+
+        var headerRange = worksheet.Range(1, 1, 1, 5);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+        var row = 2;
+
+        foreach (var employee in employeesForExport)
+        {
+            worksheet.Cell(row, 1).Value = GetUserDisplayName(employee.User);
+            worksheet.Cell(row, 2).Value = employee.User?.Email ?? "";
+            worksheet.Cell(row, 3).Value = employee.Employee_Position;
+            worksheet.Cell(row, 4).Value = employee.Employee_Salary;
+            worksheet.Cell(row, 5).Value = employee.Employee_HireDate;
+
+            row++;
+        }
+
+        worksheet.Column(5).Style.DateFormat.Format = "dd.MM.yyyy";
+        worksheet.SheetView.FreezeRows(1);
+        worksheet.Columns().AdjustToContents();
+
+        await DownloadExcelAsync(workbook, "employees.xlsx");
     }
 }
