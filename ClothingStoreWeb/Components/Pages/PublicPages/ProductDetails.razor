@@ -25,6 +25,21 @@ else
 
             @if (productImages.Any())
             {
+                <div class="product-gallery-column">
+                    @for (var i = 0; i < productImages.Count; i++)
+                    {
+                        var imageIndex = i;
+
+                        <button type="button"
+                                class="product-gallery-button @(selectedImageIndex == imageIndex ? "active" : "")"
+                                @onclick="() => SelectImage(imageIndex)">
+                            <img src="@productImages[imageIndex]"
+                                 alt="@product.Product_Name"
+                                 class="product-gallery-image" />
+                        </button>
+                    }
+                </div>
+
                 <div class="product-main-image">
                     <img src="@productImages[selectedImageIndex]"
                          alt="@product.Product_Name"
@@ -49,32 +64,171 @@ else
                         </button>
                     }
                 </div>
-
-                @if (productImages.Count > 1)
-                {
-                    <div class="product-gallery">
-                        @for (var i = 0; i < productImages.Count; i++)
-                        {
-                            var imageIndex = i;
-
-                            <button type="button"
-                                    class="product-gallery-button @(selectedImageIndex == imageIndex ? "active" : "")"
-                                    @onclick="() => SelectImage(imageIndex)">
-                                <img src="@productImages[imageIndex]"
-                                     alt="@product.Product_Name"
-                                     class="product-gallery-image" />
-                            </button>
-                        }
-                    </div>
-                }
             }
             else
             {
-                <div class="product-no-image">Нет изображения</div>
+                <div class="product-main-image product-main-image-empty">
+                    <div class="product-no-image">Нет изображения</div>
+                </div>
             }
         </div>
 
-        @if (isImageViewerOpen)
+        <div class="product-details-info">
+
+            <h1>@product.Product_Name</h1>
+
+            <div class="product-meta">
+                <span>Категория: @product.Category?.Category_Name</span>
+                <span>Цвет: @product.Product_Coloring</span>
+            </div>
+
+            <p class="product-price">
+                @product.Product_Price.ToString("N0") ₽
+            </p>
+
+            <div class="product-size-block">
+                <div class="product-size-title">
+                    <span>Размер</span>
+
+                    @if (stocks.Any(stock => stock.Stock_Quantity > 0))
+                    {
+                        <span class="product-size-count">
+                            В наличии: @stocks.Sum(stock => stock.Stock_Quantity)
+                        </span>
+                    }
+                </div>
+
+                @if (stocks.Count == 0 || !stocks.Any(stock => stock.Stock_Quantity > 0))
+                {
+                    <p class="product-no-stock">
+                        Товар временно отсутствует в наличии.
+                    </p>
+
+                    @if (stocks.Count > 0)
+                    {
+                        <div class="product-size-list">
+                            @foreach (var stock in stocks)
+                            {
+                                <button type="button"
+                                        class="product-size-button unavailable"
+                                        disabled>
+                                    @stock.Size?.Size_Name
+                                </button>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="product-size-list">
+                        @foreach (var stock in stocks)
+                        {
+                            var isAvailable = stock.Stock_Quantity > 0;
+
+                            <button type="button"
+                                    class="product-size-button @(selectedStockId == stock.Stock_Id ? "active" : "") @(isAvailable ? "" : "unavailable")"
+                                    disabled="@(!isAvailable)"
+                                    @onclick="() => selectedStockId = stock.Stock_Id">
+                                @stock.Size?.Size_Name
+                            </button>
+                        }
+                    </div>
+
+                    @if (selectedStockId is not null)
+                    {
+                        var selectedStock = stocks.FirstOrDefault(stock => stock.Stock_Id == selectedStockId.Value);
+
+                        if (selectedStock is not null)
+                        {
+                            <div class="selected-stock-info">
+                                В наличии: <strong>@selectedStock.Stock_Quantity</strong> шт.
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="selected-stock-info muted">
+                            Выберите доступный размер, чтобы посмотреть точное количество на складе.
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="product-actions">
+                <button class="product-cart-button"
+                        disabled="@(!CanAddSelectedStockToCart())"
+                        @onclick="AddToCart">
+                    В корзину
+                </button>
+
+                <a class="product-return-link" href="@GetReturnCatalogUrl()">
+                    Вернуться в каталог
+                </a>
+            </div>
+
+            <div class="product-info-accordion">
+                <details open>
+                    <summary>Описание</summary>
+                    <p>@product.Product_Description</p>
+                </details>
+
+                <details>
+                    <summary>Доставка</summary>
+                    <p>
+                        Способ доставки выбирается при оформлении заказа.
+                        После оформления заказ можно посмотреть в личном кабинете.
+                    </p>
+                </details>
+
+                <details>
+                    <summary>Оплата</summary>
+                    <p>
+                        Доступные способы оплаты указываются на странице оформления заказа.
+                        Платёжные реквизиты банковских карт в системе не сохраняются.
+                    </p>
+                </details>
+                        </div>
+        </div>
+    </div>
+
+    @if (recommendedProducts.Any())
+    {
+        <section class="recommended-products">
+            <div class="recommended-products-header">
+                <h2>Вам может понравиться</h2>
+            </div>
+
+            <div class="recommended-products-grid">
+                @foreach (var item in recommendedProducts)
+                {
+                    <a class="recommended-product-card"
+                       href="@($"/catalog/product/{item.Product_Id}")">
+                        <div class="recommended-product-image">
+                            @if (!string.IsNullOrWhiteSpace(item.Product_ImagePath))
+                            {
+                                <img src="@item.Product_ImagePath"
+                                     alt="@item.Product_Name" />
+                            }
+                            else
+                            {
+                                <span>Нет изображения</span>
+                            }
+                        </div>
+
+                        <div class="recommended-product-name">
+                            @item.Product_Name
+                        </div>
+
+                        <div class="recommended-product-price">
+                            @item.Product_Price.ToString("N0") ₽
+                        </div>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+
+    @if (isImageViewerOpen)
         {
             var viewerImages = GetProductImages();
 
@@ -156,79 +310,6 @@ else
                 </div>
             </div>
         }
-
-        <div class="product-details-info">
-            <h1>@product.Product_Name</h1>
-
-            <p class="product-category">
-                Категория: @product.Category?.Category_Name
-            </p>
-
-            <p>
-                Цвет: @product.Product_Coloring
-            </p>
-
-            <p class="product-description">
-                @product.Product_Description
-            </p>
-
-            <p class="product-price">
-                @product.Product_Price.ToString("N2") ₽
-            </p>
-
-            <h3>Наличие по размерам</h3>
-
-            @if (stocks.Count == 0)
-            {
-                <p>Информация о наличии пока отсутствует.</p>
-            }
-            else
-            {
-                <table class="product-stock-table">
-                    <thead>
-                        <tr>
-                            <th>Размер</th>
-                            <th>Количество</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var stock in stocks)
-                        {
-                            <tr>
-                                <td>@stock.Size?.Size_Name</td>
-                                <td>@stock.Stock_Quantity</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-
-                <div class="product-size-select">
-                    <label for="sizeSelect">Выберите размер</label>
-
-                    <select id="sizeSelect" class="form-select" @bind="selectedStockId">
-                        <option value="">Выберите размер</option>
-
-                        @foreach (var stock in stocks)
-                        {
-                            <option value="@stock.Stock_Id">
-                                @stock.Size?.Size_Name — доступно: @stock.Stock_Quantity
-                            </option>
-                        }
-                    </select>
-                </div>
-            }
-
-            <div class="product-actions">
-                <button class="btn btn-primary"
-                        disabled="@(stocks.Count == 0 || selectedStockId is null)"
-                        @onclick="AddToCart">
-                    Добавить в корзину
-                </button>
-
-                <a href="@GetReturnCatalogUrl()">Вернуться в каталог</a>
-            </div>
-        </div>
-    </div>
 }
 
 @code {
@@ -240,6 +321,7 @@ else
 
     private Product? product;
     private List<Stock> stocks = new();
+    private List<Product> recommendedProducts = new();
     private int? selectedStockId;
     private int selectedImageIndex;
     private int previousImageIndex;
@@ -262,8 +344,16 @@ else
     private const double MaxImageOffsetX = 500;
     private const double MaxImageOffsetY = 500;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
+        selectedStockId = null;
+        selectedImageIndex = 0;
+        previousImageIndex = 0;
+        slideDirection = "next";
+        isImageViewerOpen = false;
+        isAddToCartModalOpen = false;
+        ResetModalImageZoom();
+
         await using var context = await DbFactory.CreateDbContextAsync();
 
         product = await context.Products
@@ -282,8 +372,19 @@ else
         stocks = await context.Stocks
             .Include(stock => stock.Size)
             .AsNoTracking()
-            .Where(stock => stock.Product_Id == ProductId && stock.Stock_Quantity > 0)
+            .Where(stock => stock.Product_Id == ProductId)
             .OrderBy(stock => stock.Size!.Size_Name)
+            .ToListAsync();
+
+        recommendedProducts = await context.Products
+            .Include(product => product.Category)
+            .AsNoTracking()
+            .Where(item =>
+                item.Product_Id != ProductId &&
+                !item.Product_IsHidden &&
+                !string.IsNullOrWhiteSpace(item.Product_ImagePath))
+            .OrderBy(item => Guid.NewGuid())
+            .Take(4)
             .ToListAsync();
     }
 
@@ -299,6 +400,18 @@ else
         return "/catalog";
     }
 
+    private bool CanAddSelectedStockToCart()
+    {
+        if (selectedStockId is null)
+        {
+            return false;
+        }
+
+        var selectedStock = stocks.FirstOrDefault(stock => stock.Stock_Id == selectedStockId.Value);
+
+        return selectedStock is not null && selectedStock.Stock_Quantity > 0;
+    }
+
     private async Task AddToCart()
     {
         if (product is null || selectedStockId is null)
@@ -308,7 +421,9 @@ else
 
         var selectedStock = stocks.FirstOrDefault(stock => stock.Stock_Id == selectedStockId.Value);
 
-        if (selectedStock is null || selectedStock.Size is null)
+        if (selectedStock is null ||
+            selectedStock.Size is null ||
+            selectedStock.Stock_Quantity <= 0)
         {
             return;
         }

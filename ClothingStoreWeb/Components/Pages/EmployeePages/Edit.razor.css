@@ -1,0 +1,10 @@
+.user-search-results {
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.employee-user-readonly {
+    background-color: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+}

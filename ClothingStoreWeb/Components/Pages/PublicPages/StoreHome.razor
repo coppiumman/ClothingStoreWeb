@@ -1,38 +1,343 @@
 @page "/store"
 @layout PublicLayout
 
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Data
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+
 <PageTitle>Интернет-магазин одежды</PageTitle>
 
 <section class="store-hero">
-    <div class="store-hero-content">
-        <h1>Интернет-магазин одежды</h1>
-        <p>
-            Подберите одежду из каталога, просмотрите доступные размеры и оформите заказ онлайн.
-        </p>
+    @if (heroSlides.Count > 0)
+    {
+        <div class="store-hero-slider @slideDirectionClass">
+            @for (var i = 0; i < heroSlides.Count; i++)
+            {
+                var slide = heroSlides[i];
 
-        <a class="btn btn-primary" href="/catalog">Перейти в каталог</a>
+                <div class="store-hero-slide @(i == currentSlideIndex ? "active" : "")">
+                    <div class="store-hero-image">
+                        @if (!string.IsNullOrWhiteSpace(slide.ImagePath))
+                        {
+                            <img src="@slide.ImagePath" alt="@slide.Title" />
+                        }
+                        else
+                        {
+                            <div class="store-hero-placeholder">
+                                <span>Интернет-магазин одежды</span>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="store-hero-overlay">
+                        <p class="store-hero-label">@slide.Label</p>
+                        <h1>@slide.Title</h1>
+                        <p>@slide.Description</p>
+                        <a class="store-hero-link" href="@slide.Link">Смотреть каталог</a>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <button type="button"
+                class="store-hero-arrow store-hero-arrow-left"
+                @onclick="PreviousSlide"
+                aria-label="Предыдущий слайд">
+            ‹
+        </button>
+
+        <button type="button"
+                class="store-hero-arrow store-hero-arrow-right"
+                @onclick="NextSlide"
+                aria-label="Следующий слайд">
+            ›
+        </button>
+
+        <div class="store-hero-dots">
+            @for (var i = 0; i < heroSlides.Count; i++)
+            {
+                var slideIndex = i;
+
+                <button type="button"
+                        class="store-hero-dot @(slideIndex == currentSlideIndex ? "active" : "")"
+                        @onclick="() => SetSlide(slideIndex)"
+                        aria-label="@($"Слайд {slideIndex + 1}")">
+                </button>
+            }
+        </div>
+    }
+</section>
+
+<section class="store-products-section">
+    <div class="store-section-header">
+        <h2>Новинки</h2>
+        <a href="/catalog">Смотреть всё</a>
+    </div>
+
+    @if (newProducts.Count > 0)
+    {
+        <div class="store-product-grid">
+            @foreach (var product in newProducts)
+            {
+                <a class="store-product-card" href="@($"/catalog/product/{product.Product_Id}")">
+                    <div class="store-product-image">
+                        @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+                        {
+                            <img src="@product.Product_ImagePath" alt="@product.Product_Name" />
+                        }
+                        else
+                        {
+                            <span>Нет изображения</span>
+                        }
+                    </div>
+
+                    <div class="store-product-info">
+                        <h3>@product.Product_Name</h3>
+                        <p>@product.Product_Price.ToString("N2") ₽</p>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="store-muted">Товары для отображения пока отсутствуют.</p>
+    }
+</section>
+
+<section class="store-category-poster">
+    <div class="store-category-poster-content">
+        <p>Коллекция</p>
+        <h2>Деним</h2>
+        <a href="/catalog">Перейти в каталог</a>
     </div>
 </section>
 
-<section class="store-section">
-    <h2>Разделы магазина</h2>
-
-    <div class="store-category-grid">
-        <div class="store-category-card">
-            <h3>Каталог товаров</h3>
-            <p>Просмотр доступной одежды, цен, цветов и описаний товаров.</p>
-            <a href="/catalog">Открыть каталог</a>
-        </div>
-
-        <div class="store-category-card">
-            <h3>Карточка товара</h3>
-            <p>Подробная информация о товаре, размерах и наличии на складе.</p>
-        </div>
-
-        <div class="store-category-card">
-            <h3>Корзина</h3>
-            <p>Добавление товаров в корзину и оформление заказа.</p>
-            <p><em>Будет реализовано позже.</em></p>
-        </div>
+<section class="store-products-section">
+    <div class="store-section-header">
+        <h2>Хиты</h2>
+        <a href="/catalog">В каталог</a>
     </div>
+
+    @if (hitProducts.Count > 0)
+    {
+        <div class="store-product-grid">
+            @foreach (var product in hitProducts)
+            {
+                <a class="store-product-card" href="@($"/catalog/product/{product.Product_Id}")">
+                    <div class="store-product-image">
+                        @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+                        {
+                            <img src="@product.Product_ImagePath" alt="@product.Product_Name" />
+                        }
+                        else
+                        {
+                            <span>Нет изображения</span>
+                        }
+                    </div>
+
+                    <div class="store-product-info">
+                        <h3>@product.Product_Name</h3>
+                        <p>@product.Product_Price.ToString("N2") ₽</p>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="store-muted">Товары для отображения пока отсутствуют.</p>
+    }
 </section>
+
+@code {
+    private readonly List<HeroSlide> heroSlides = new();
+    private readonly List<Product> newProducts = new();
+    private readonly List<Product> hitProducts = new();
+
+    private int currentSlideIndex;
+    private int previousSlideIndex;
+    private string slideDirectionClass = "slide-next";
+
+    private PeriodicTimer? heroTimer;
+    private CancellationTokenSource? heroTimerCancellation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        using var context = DbFactory.CreateDbContext();
+
+        var products = await context.Products
+            .AsNoTracking()
+            .Where(product => !product.Product_IsHidden)
+            .OrderByDescending(product => product.Product_Id)
+            .Take(20)
+            .ToListAsync();
+
+        newProducts.AddRange(products.Take(4));
+
+        hitProducts.AddRange(
+            products
+                .OrderBy(product => Guid.NewGuid())
+                .Take(4));
+
+        var heroProducts = products
+            .Where(product => !string.IsNullOrWhiteSpace(product.Product_ImagePath))
+            .Take(3)
+            .ToList();
+
+        foreach (var product in heroProducts)
+        {
+            heroSlides.Add(new HeroSlide
+            {
+                Label = "Новая коллекция",
+                Title = product.Product_Name,
+                Description = "Откройте актуальные товары интернет-магазина одежды.",
+                ImagePath = product.Product_ImagePath,
+                Link = $"/catalog/product/{product.Product_Id}"
+            });
+        }
+
+        while (heroSlides.Count < 3)
+        {
+            heroSlides.Add(new HeroSlide
+            {
+                Label = "Каталог",
+                Title = "Интернет-магазин одежды",
+                Description = "Подберите товары, просмотрите размеры и оформите заказ онлайн.",
+                ImagePath = null,
+                Link = "/catalog"
+            });
+        }
+
+        StartHeroTimer();
+    }
+
+    private void StartHeroTimer()
+    {
+        StopHeroTimer();
+
+        if (heroSlides.Count <= 1)
+        {
+            return;
+        }
+
+        heroTimerCancellation = new CancellationTokenSource();
+        heroTimer = new PeriodicTimer(TimeSpan.FromSeconds(25));
+
+        _ = AutoSwitchSlidesAsync(heroTimerCancellation.Token);
+    }
+
+    private void StopHeroTimer()
+    {
+        heroTimerCancellation?.Cancel();
+        heroTimerCancellation?.Dispose();
+        heroTimerCancellation = null;
+
+        heroTimer?.Dispose();
+        heroTimer = null;
+    }
+
+    private async Task AutoSwitchSlidesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (heroTimer is not null &&
+                   await heroTimer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(() =>
+                {
+                    GoToNextSlide(resetTimer: false);
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void PreviousSlide()
+    {
+        GoToPreviousSlide(resetTimer: true);
+    }
+
+    private void NextSlide()
+    {
+        GoToNextSlide(resetTimer: true);
+    }
+
+    private void GoToPreviousSlide(bool resetTimer)
+    {
+        if (heroSlides.Count == 0)
+        {
+            return;
+        }
+
+        previousSlideIndex = currentSlideIndex;
+        slideDirectionClass = "slide-prev";
+
+        currentSlideIndex--;
+
+        if (currentSlideIndex < 0)
+        {
+            currentSlideIndex = heroSlides.Count - 1;
+        }
+
+        if (resetTimer)
+        {
+            StartHeroTimer();
+        }
+    }
+
+    private void GoToNextSlide(bool resetTimer)
+    {
+        if (heroSlides.Count == 0)
+        {
+            return;
+        }
+
+        previousSlideIndex = currentSlideIndex;
+        slideDirectionClass = "slide-next";
+
+        currentSlideIndex++;
+
+        if (currentSlideIndex >= heroSlides.Count)
+        {
+            currentSlideIndex = 0;
+        }
+
+        if (resetTimer)
+        {
+            StartHeroTimer();
+        }
+    }
+
+    private void SetSlide(int slideIndex)
+    {
+        if (slideIndex < 0 || slideIndex >= heroSlides.Count || slideIndex == currentSlideIndex)
+        {
+            return;
+        }
+
+        previousSlideIndex = currentSlideIndex;
+        slideDirectionClass = slideIndex > currentSlideIndex ? "slide-next" : "slide-prev";
+        currentSlideIndex = slideIndex;
+
+        StartHeroTimer();
+    }
+
+    public void Dispose()
+    {
+        StopHeroTimer();
+    }
+
+    private sealed class HeroSlide
+    {
+        public string Label { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string? ImagePath { get; set; }
+        public string Link { get; set; } = "/catalog";
+    }
+}

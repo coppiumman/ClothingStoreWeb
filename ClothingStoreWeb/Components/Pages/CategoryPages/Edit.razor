@@ -71,8 +71,24 @@ else
 
     private async Task UpdateCategory()
     {
+        if (Category is null)
+        {
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
-        context.Attach(Category!).State = EntityState.Modified;
+
+        var categoryFromDb = await context.Categories
+            .FirstOrDefaultAsync(category => category.Category_Id == Category.Category_Id);
+
+        if (categoryFromDb is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        categoryFromDb.Category_Name = Category.Category_Name;
+        categoryFromDb.Category_Description = Category.Category_Description;
 
         try
         {
@@ -80,14 +96,13 @@ else
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!CategoryExists(Category!.Category_Id))
+            if (!CategoryExists(Category.Category_Id))
             {
                 NavigationManager.NavigateTo("notfound");
+                return;
             }
-            else
-            {
-                throw;
-            }
+
+            throw;
         }
 
         NavigationManager.NavigateTo("/categories");

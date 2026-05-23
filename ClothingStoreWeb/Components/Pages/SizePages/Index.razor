@@ -4,10 +4,12 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
 @using ClothingStoreWeb.Data
+@using Microsoft.AspNetCore.Components.Authorization
 @implements IAsyncDisposable
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Размеры</PageTitle>
 
@@ -44,6 +46,7 @@
     private bool canCreate;
     private bool canEdit;
     private bool canDelete;
+    private bool isAdmin;
 
     protected override async Task OnInitializedAsync()
     {
@@ -55,7 +58,10 @@
 
         canCreate = await AccessService.CanCreateAsync("Sizes");
         canEdit = await AccessService.CanEditAsync("Sizes");
-        canDelete = await AccessService.CanDeleteAsync("Sizes");
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isAdmin = authState.User.IsInRole("Администратор");
+
+        canDelete = isAdmin && await AccessService.CanDeleteAsync("Sizes");
 
         context = DbFactory.CreateDbContext();
         sizes = context.Sizes

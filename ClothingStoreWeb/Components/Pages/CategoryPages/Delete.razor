@@ -1,5 +1,5 @@
 @page "/categories/delete"
-@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@attribute [Authorize(Roles = "Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
@@ -27,6 +27,14 @@
             <dt class="col-sm-2">Описание категории</dt>
             <dd class="col-sm-10">@category.Category_Description</dd>
         </dl>
+
+        @if (!string.IsNullOrWhiteSpace(deleteError))
+        {
+            <div class="alert alert-danger">
+                @deleteError
+            </div>
+        }
+
         <EditForm method="post" Model="category" OnValidSubmit="DeleteCategory" FormName="delete" Enhance>
             <button type="submit" class="btn btn-danger" disabled="@(category is null)">Удалить</button> |
             <a href="/categories">Вернуться к списку</a>
@@ -36,6 +44,7 @@
 
 @code {
     private Category? category;
+    private string? deleteError;
 
     [SupplyParameterFromQuery]
     private int Category_Id { get; set; }
@@ -59,9 +68,34 @@
 
     private async Task DeleteCategory()
     {
-        using var context = DbFactory.CreateDbContext();
-        context.Categories.Remove(category!);
+        if (category is null)
+        {
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var categoryFromDb = await context.Categories
+            .FirstOrDefaultAsync(c => c.Category_Id == category.Category_Id);
+
+        if (categoryFromDb is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        var hasProducts = await context.Products
+            .AnyAsync(product => product.Category_Id == categoryFromDb.Category_Id);
+
+        if (hasProducts)
+        {
+            deleteError = "Удаление невозможно: категория используется товарами. Сначала перенесите товары в другую категорию или удалите связанные товары.";
+            return;
+        }
+
+        context.Categories.Remove(categoryFromDb);
         await context.SaveChangesAsync();
+
         NavigationManager.NavigateTo("/categories");
     }
 }

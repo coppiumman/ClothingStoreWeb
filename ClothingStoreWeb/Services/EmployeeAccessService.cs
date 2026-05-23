@@ -24,13 +24,6 @@ public class EmployeeAccessService(
         "OrderItems"
     ];
 
-    private static readonly HashSet<string> StorekeeperManageSections =
-    [
-        "Products",
-        "Sizes",
-        "Stocks"
-    ];
-
     public async Task<bool> IsAdminAsync()
     {
         var principal = await GetCurrentPrincipalAsync();
@@ -91,9 +84,42 @@ public class EmployeeAccessService(
         var position = await GetEmployeePositionAsync(principal);
         return position switch
         {
-            ManagerPosition => true,
-            StorekeeperPosition => action == EmployeeAction.View || StorekeeperManageSections.Contains(section),
+            ManagerPosition => CanManagerAccess(section, action),
+            StorekeeperPosition => CanStorekeeperAccess(section, action),
             ConsultantPosition => action == EmployeeAction.View,
+            _ => false
+        };
+    }
+
+    private static bool CanManagerAccess(string section, EmployeeAction action)
+    {
+        if (action == EmployeeAction.Delete)
+        {
+            return false;
+        }
+
+        return section switch
+        {
+            "Categories" => action is EmployeeAction.View or EmployeeAction.Create or EmployeeAction.Edit,
+            "Products" => action is EmployeeAction.View or EmployeeAction.Create or EmployeeAction.Edit,
+            "Sizes" => action is EmployeeAction.View or EmployeeAction.Create or EmployeeAction.Edit,
+            "Stocks" => action is EmployeeAction.View or EmployeeAction.Create or EmployeeAction.Edit,
+            "Orders" => action is EmployeeAction.View or EmployeeAction.Edit,
+            "OrderItems" => action == EmployeeAction.View,
+            _ => false
+        };
+    }
+
+    private static bool CanStorekeeperAccess(string section, EmployeeAction action)
+    {
+        return section switch
+        {
+            "Categories" => action == EmployeeAction.View,
+            "Products" => action == EmployeeAction.View,
+            "Sizes" => action == EmployeeAction.View,
+            "Stocks" => action is EmployeeAction.View or EmployeeAction.Create or EmployeeAction.Edit,
+            "Orders" => action == EmployeeAction.View,
+            "OrderItems" => action == EmployeeAction.View,
             _ => false
         };
     }

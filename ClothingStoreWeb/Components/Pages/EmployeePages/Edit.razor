@@ -12,6 +12,7 @@
 
 <h2>Сотрудник</h2>
 <hr />
+
 @if (Employee is null)
 {
     <p><em>Загрузка...</em></p>
@@ -22,23 +23,28 @@ else
         <div class="col-md-4">
             <EditForm method="post" Model="Employee" OnValidSubmit="UpdateEmployee" FormName="edit" Enhance>
                 <DataAnnotationsValidator />
-                <ValidationSummary role="alert"/>
+                <ValidationSummary role="alert" />
+
                 <input type="hidden" name="Employee.Employee_Id" value="@Employee.Employee_Id" />
+
                 <div class="mb-3">
-                    <label for="user_id" class="form-label">Пользователь</label>
-                    <InputSelect id="user_id" @bind-Value="Employee.User_Id" class="form-control" aria-required="true">
-                        <option value="">Выберите пользователя</option>
-                        @foreach (var user in Users)
-                        {
-                            <option value="@user.Id">@GetUserDisplayName(user)</option>
-                        }
-                    </InputSelect>
-                    <ValidationMessage For="() => Employee.User_Id" class="text-danger" />
+                    <label class="form-label">Пользователь:</label>
+                    <input class="form-control employee-user-readonly"
+                           value="@GetSelectedUserName()"
+                           readonly />
+
+                    <div class="form-text">
+                        Пользователь уже привязан к записи сотрудника и не изменяется при редактировании.
+                    </div>
                 </div>
+
                 <div class="mb-3">
-                <span class="text-danger">*</span>
+                    <span class="text-danger">*</span>
                     <label for="employee_position" class="form-label">Должность:</label>
-                    <InputSelect id="employee_position" @bind-Value="Employee.Employee_Position" class="form-control" aria-required="true">
+                    <InputSelect id="employee_position"
+                                 @bind-Value="Employee.Employee_Position"
+                                 class="form-control"
+                                 aria-required="true">
                         <option value="">Выберите должность</option>
                         @foreach (var position in EmployeePositions)
                         {
@@ -47,18 +53,29 @@ else
                     </InputSelect>
                     <ValidationMessage For="() => Employee.Employee_Position" class="text-danger" />
                 </div>
+
                 <div class="mb-3">
-                <span class="text-danger">*</span>
+                    <span class="text-danger">*</span>
                     <label for="employee_salary" class="form-label">Зарплата:</label>
-                    <InputNumber id="employee_salary" @bind-Value="Employee.Employee_Salary" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную зарплату"/>
+                    <InputNumber id="employee_salary"
+                                 @bind-Value="Employee.Employee_Salary"
+                                 class="form-control"
+                                 aria-required="true"
+                                 ParsingErrorMessage="Введите корректную зарплату" />
                     <ValidationMessage For="() => Employee.Employee_Salary" class="text-danger" />
                 </div>
+
                 <div class="mb-3">
-                <span class="text-danger">*</span>
+                    <span class="text-danger">*</span>
                     <label for="employee_hiredate" class="form-label">Дата приёма на работу:</label>
-                    <InputDate id="employee_hiredate" @bind-Value="Employee.Employee_HireDate" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную дату приёма на работу"/>
+                    <InputDate id="employee_hiredate"
+                               @bind-Value="Employee.Employee_HireDate"
+                               class="form-control"
+                               aria-required="true"
+                               ParsingErrorMessage="Введите корректную дату приёма на работу" />
                     <ValidationMessage For="() => Employee.Employee_HireDate" class="text-danger" />
                 </div>
+
                 <button type="submit" class="btn btn-primary">Сохранить</button>
             </EditForm>
         </div>
@@ -89,8 +106,15 @@ else
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
-        Employee ??= await context.Employees.FirstOrDefaultAsync(m => m.Employee_Id == Employee_Id);
-        Users = await context.Users.ToListAsync();
+
+        Employee ??= await context.Employees
+            .FirstOrDefaultAsync(employee => employee.Employee_Id == Employee_Id);
+
+        Users = await context.Users
+            .AsNoTracking()
+            .OrderBy(user => user.UserFullName)
+            .ThenBy(user => user.Email)
+            .ToListAsync();
 
         if (Employee is null)
         {
@@ -101,23 +125,50 @@ else
     private static string GetUserDisplayName(ApplicationUser? user)
     {
         if (user is null)
+        {
             return "";
+        }
 
         if (!string.IsNullOrWhiteSpace(user.UserFullName))
+        {
             return user.UserFullName;
+        }
 
         if (!string.IsNullOrWhiteSpace(user.Email))
+        {
             return user.Email;
+        }
 
         return user.Id;
     }
 
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more information, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private string GetSelectedUserName()
+    {
+        var selectedUser = Users.FirstOrDefault(user => user.Id == Employee?.User_Id);
+        return selectedUser is null ? "Пользователь не выбран" : GetUserDisplayName(selectedUser);
+    }
+
     private async Task UpdateEmployee()
     {
+        if (Employee is null)
+        {
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
-        context.Attach(Employee!).State = EntityState.Modified;
+
+        var employeeFromDb = await context.Employees
+            .FirstOrDefaultAsync(employee => employee.Employee_Id == Employee.Employee_Id);
+
+        if (employeeFromDb is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        employeeFromDb.Employee_Position = Employee.Employee_Position;
+        employeeFromDb.Employee_Salary = Employee.Employee_Salary;
+        employeeFromDb.Employee_HireDate = Employee.Employee_HireDate;
 
         try
         {
@@ -125,14 +176,13 @@ else
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!EmployeeExists(Employee!.Employee_Id))
+            if (!EmployeeExists(Employee.Employee_Id))
             {
                 NavigationManager.NavigateTo("notfound");
+                return;
             }
-            else
-            {
-                throw;
-            }
+
+            throw;
         }
 
         NavigationManager.NavigateTo("/employees");
@@ -141,6 +191,6 @@ else
     private bool EmployeeExists(int employee_id)
     {
         using var context = DbFactory.CreateDbContext();
-        return context.Employees.Any(e => e.Employee_Id == employee_id);
+        return context.Employees.Any(employee => employee.Employee_Id == employee_id);
     }
 }

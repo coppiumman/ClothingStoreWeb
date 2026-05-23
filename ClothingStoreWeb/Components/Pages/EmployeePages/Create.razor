@@ -26,16 +26,49 @@ else
                 <DataAnnotationsValidator />
                 <ValidationSummary class="text-danger" role="alert"/>
                 <div class="mb-3">
-                    <label for="user_id" class="form-label">Пользователь</label>
-                    <InputSelect id="user_id" @bind-Value="Employee.User_Id" class="form-control" aria-required="true">
-                        <option value="">Выберите пользователя</option>
-                        @foreach (var user in Users)
+                    <label for="user_search" class="form-label">Поиск пользователя:</label>
+                    <input id="user_search"
+                           @bind="userSearchText"
+                           @bind:event="oninput"
+                           class="form-control"
+                           placeholder="Введите ФИО или email" />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(userSearchText))
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Найденные пользователи:</label>
+
+                        @if (FilteredUsers.Any())
                         {
-                            <option value="@user.Id">@GetUserDisplayName(user)</option>
+                            <div class="list-group user-search-results">
+                                @foreach (var user in FilteredUsers)
+                                {
+                                    <button type="button"
+                                            class="list-group-item list-group-item-action"
+                                            @onclick="() => SelectUser(user)">
+                                        @GetUserDisplayName(user)
+                                    </button>
+                                }
+                            </div>
                         }
-                    </InputSelect>
-                    <ValidationMessage For="() => Employee.User_Id" class="text-danger" /> 
-                </div>        
+                        else
+                        {
+                            <div class="text-muted">
+                                Пользователи не найдены.
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">Выбранный пользователь:</label>
+                    <input class="form-control"
+                           value="@GetSelectedUserName()"
+                           readonly />
+
+                    <ValidationMessage For="() => Employee.User_Id" class="text-danger" />
+                </div>
                 <div class="mb-3">
                     <span class="text-danger">*</span>
                     <label for="employee_position" class="form-label">Должность:</label> 
@@ -59,7 +92,15 @@ else
                     <label for="employee_hiredate" class="form-label">Дата приёма на работу:</label> 
                     <InputDate id="employee_hiredate" @bind-Value="Employee.Employee_HireDate" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную дату приёма на работу"/> 
                     <ValidationMessage For="() => Employee.Employee_HireDate" class="text-danger" /> 
-                </div>        
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(createError))
+                {
+                    <div class="alert alert-danger">
+                        @createError
+                    </div>
+                }
+
                 <button type="submit" class="btn btn-primary">Добавить</button>
             </EditForm>
         </div>
@@ -75,6 +116,28 @@ else
     private Employee Employee { get; set; } = default!;
 
     private List<ApplicationUser> Users { get; set; } = new();
+    
+    private string userSearchText = string.Empty;
+    private string? createError;
+
+    private IEnumerable<ApplicationUser> FilteredUsers
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(userSearchText))
+            {
+                return Enumerable.Empty<ApplicationUser>();
+            }
+
+            return Users
+                .Where(user =>
+                    (!string.IsNullOrWhiteSpace(user.UserFullName) &&
+                     user.UserFullName.Contains(userSearchText, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrWhiteSpace(user.Email) &&
+                     user.Email.Contains(userSearchText, StringComparison.OrdinalIgnoreCase)))
+                .Take(10);
+        }
+    }
 
     private const string EmployeeRoleName = "Сотрудник";
 
@@ -91,7 +154,18 @@ else
         Employee ??= new();
 
         using var context = DbFactory.CreateDbContext();
-        Users = await context.Users.ToListAsync();
+
+        var employeeUserIds = await context.Employees
+            .AsNoTracking()
+            .Select(employee => employee.User_Id)
+            .ToListAsync();
+
+        Users = await context.Users
+            .AsNoTracking()
+            .Where(user => !employeeUserIds.Contains(user.Id))
+            .OrderBy(user => user.UserFullName)
+            .ThenBy(user => user.Email)
+            .ToListAsync();
     }
 
     private static string GetUserDisplayName(ApplicationUser? user)
@@ -108,10 +182,39 @@ else
         return user.Id;
     }
 
-    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
+    private void SelectUser(ApplicationUser user)
+    {
+        Employee.User_Id = user.Id;
+        userSearchText = GetUserDisplayName(user);
+    }
+
+    private string GetSelectedUserName()
+    {
+        var selectedUser = Users.FirstOrDefault(user => user.Id == Employee.User_Id);
+        return selectedUser is null ? "Пользователь не выбран" : GetUserDisplayName(selectedUser);
+    }
+
     private async Task AddEmployee()
     {
+        createError = null;
+
+        if (string.IsNullOrWhiteSpace(Employee.User_Id))
+        {
+            createError = "Выберите пользователя.";
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
+
+        var employeeAlreadyExists = await context.Employees
+            .AnyAsync(employee => employee.User_Id == Employee.User_Id);
+
+        if (employeeAlreadyExists)
+        {
+            createError = "Этот пользователь уже является сотрудником.";
+            return;
+        }
+
         context.Employees.Add(Employee);
         await context.SaveChangesAsync();
 

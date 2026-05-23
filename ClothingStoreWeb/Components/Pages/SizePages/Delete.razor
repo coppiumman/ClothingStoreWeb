@@ -1,5 +1,5 @@
 @page "/sizes/delete"
-@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@attribute [Authorize(Roles = "Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
@@ -23,6 +23,14 @@
             <dt class="col-sm-2">Размер</dt>
             <dd class="col-sm-10">@size.Size_Name</dd>
         </dl>
+
+        @if (!string.IsNullOrWhiteSpace(deleteError))
+        {
+            <div class="alert alert-danger">
+                @deleteError
+            </div>
+        }
+
         <EditForm method="post" Model="size" OnValidSubmit="DeleteSize" FormName="delete" Enhance>
             <button type="submit" class="btn btn-danger" disabled="@(size is null)">Удалить</button> |
             <a href="/sizes">Вернуться к списку</a>
@@ -32,6 +40,7 @@
 
 @code {
     private Size? size;
+    private string? deleteError;
 
     [SupplyParameterFromQuery]
     private int Size_Id { get; set; }
@@ -55,9 +64,43 @@
 
     private async Task DeleteSize()
     {
-        using var context = DbFactory.CreateDbContext();
-        context.Sizes.Remove(size!);
+        if (size is null)
+        {
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var sizeFromDb = await context.Sizes
+            .FirstOrDefaultAsync(s => s.Size_Id == size.Size_Id);
+
+        if (sizeFromDb is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        var isUsedInOrders = await context.OrderItems
+            .AnyAsync(orderItem => orderItem.Size_Id == sizeFromDb.Size_Id);
+
+        if (isUsedInOrders)
+        {
+            deleteError = "Удаление невозможно: размер уже используется в заказах.";
+            return;
+        }
+
+        var hasStocks = await context.Stocks
+            .AnyAsync(stock => stock.Size_Id == sizeFromDb.Size_Id);
+
+        if (hasStocks)
+        {
+            deleteError = "Удаление невозможно: для размера существуют складские записи.";
+            return;
+        }
+
+        context.Sizes.Remove(sizeFromDb);
         await context.SaveChangesAsync();
+
         NavigationManager.NavigateTo("/sizes");
     }
 }

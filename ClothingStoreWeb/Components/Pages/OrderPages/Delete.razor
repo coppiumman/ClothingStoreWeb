@@ -51,9 +51,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!await AccessService.CanDeleteAsync("Orders"))
+        if (!await AccessService.CanEditAsync("Orders"))
         {
-            NavigationManager.NavigateTo("/Account/AccessDenied");
+            NavigationManager.NavigateTo("/");
             return;
         }
 

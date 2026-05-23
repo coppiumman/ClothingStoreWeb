@@ -4,7 +4,9 @@
 }
 
 .public-header {
-    position: relative;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
     height: 72px;
     padding: 0 48px;
     border-bottom: 1px solid #e5e5e5;
@@ -13,7 +15,6 @@
     justify-content: flex-end;
     background: #ffffff;
 }
-
 .public-logo {
     position: absolute;
     left: 50%;
@@ -55,6 +56,22 @@
     padding: 32px 48px;
 }
 
+@media (max-width: 700px) {
+    .public-header {
+        height: 64px;
+        padding: 0 20px;
+    }
+
+    .public-nav {
+        gap: 12px;
+        font-size: 14px;
+    }
+
+    .public-main {
+        padding: 24px 20px;
+    }
+}
+
 .cart-count {
     display: inline-block;
     min-width: 20px;
@@ -65,4 +82,93 @@
     color: white;
     font-size: 12px;
     text-align: center;
+}
+
+.public-footer {
+    margin-top: 72px;
+    padding: 48px;
+    background: #222222;
+    color: #ffffff;
+}
+
+.public-footer-top {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.2fr;
+    gap: 48px;
+    padding-bottom: 36px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.public-footer-brand a {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #ffffff;
+    text-decoration: none;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 24px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.public-footer-brand p {
+    max-width: 420px;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.6;
+}
+
+.public-footer-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+    .public-footer-column h3 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    .public-footer-column a,
+    .public-footer-column span {
+        color: rgba(255, 255, 255, 0.68);
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+        .public-footer-column a:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+
+.public-footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    padding-top: 24px;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 13px;
+}
+
+@media (max-width: 900px) {
+    .public-footer-top {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .public-footer {
+        margin-top: 48px;
+        padding: 36px 20px;
+    }
+
+    .public-footer-top {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .public-footer-bottom {
+        flex-direction: column;
+    }
 }

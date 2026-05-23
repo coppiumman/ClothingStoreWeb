@@ -47,6 +47,47 @@
         </section>
 
         <section class="order-details-section">
+            <h2>Данные оформления</h2>
+
+            <div class="order-checkout-info">
+                <div class="order-checkout-info-item">
+                    <span>ФИО получателя</span>
+                    <strong>@GetDisplayValue(order.Order_RecipientName)</strong>
+                </div>
+
+                <div class="order-checkout-info-item">
+                    <span>Телефон</span>
+                    <strong>@GetDisplayValue(order.Order_RecipientPhone)</strong>
+                </div>
+
+                <div class="order-checkout-info-item">
+                    <span>Email</span>
+                    <strong>@GetDisplayValue(order.Order_RecipientEmail)</strong>
+                </div>
+
+                <div class="order-checkout-info-item">
+                    <span>Способ доставки</span>
+                    <strong>@GetDeliveryMethodName(order.Order_DeliveryMethod)</strong>
+                </div>
+
+                <div class="order-checkout-info-item">
+                    <span>Адрес доставки</span>
+                    <strong>@GetDisplayValue(order.Order_DeliveryAddress)</strong>
+                </div>
+
+                <div class="order-checkout-info-item">
+                    <span>Способ оплаты</span>
+                    <strong>@GetPaymentMethodName(order.Order_PaymentMethod)</strong>
+                </div>
+
+                <div class="order-checkout-info-item order-checkout-info-item-wide">
+                    <span>Комментарий к заказу</span>
+                    <strong>@GetDisplayValue(order.Order_Comment)</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="order-details-section">
             <h2>Состав заказа</h2>
 
             @if (!order.OrderItems.Any())
@@ -144,6 +185,34 @@
             "cancelled" => "Отменён",
             "returned" => "Возврат",
             _ => status ?? ""
+        };
+    }
+
+    private static string GetDisplayValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? "Не указано"
+            : value;
+    }
+
+    private static string GetDeliveryMethodName(string? deliveryMethod)
+    {
+        return deliveryMethod switch
+        {
+            "pickup" => "Самовывоз",
+            "courier" => "Курьерская доставка",
+            "point" => "Пункт выдачи",
+            _ => string.IsNullOrWhiteSpace(deliveryMethod) ? "Не указано" : deliveryMethod
+        };
+    }
+
+    private static string GetPaymentMethodName(string? paymentMethod)
+    {
+        return paymentMethod switch
+        {
+            "cash" => "Оплата при получении",
+            "card" => "Банковской картой при получении",
+            _ => string.IsNullOrWhiteSpace(paymentMethod) ? "Не указано" : paymentMethod
         };
     }
 
