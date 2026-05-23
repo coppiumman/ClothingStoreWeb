@@ -26,7 +26,16 @@
     <PropertyColumn Property="category => category.Category_Name" Title="Название категории" />
     <PropertyColumn Property="category => category.Category_Description" Title="Описание категории" />
     <PropertyColumn Property="category => category.Category_DisplayOrder" Title="Порядок" />
-
+    <TemplateColumn Title="Статус" Context="category">
+        @if (category.Category_IsHidden)
+        {
+            <span class="text-muted">Скрыта</span>
+        }
+        else
+        {
+            <span>Отображается</span>
+        }
+    </TemplateColumn>
     <TemplateColumn Context="category">
         @if (canEdit)
         {
@@ -44,10 +53,20 @@
 
             <span> | </span>
 
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @onclick="() => ToggleCategoryVisibility(category.Category_Id)">
+                @(category.Category_IsHidden ? "Показать" : "Скрыть")
+            </button>
+
+            <span> | </span>
+
             <a href="@($"categories/edit?category_id={category.Category_Id}")">Изменить</a>
             <span> | </span>
         }
+
         <a href="@($"categories/details?category_id={category.Category_Id}")">Подробнее</a>
+
         @if (canDelete)
         {
             <span> | </span>
@@ -85,6 +104,31 @@
             .AsNoTracking()
             .OrderBy(category => category.Category_DisplayOrder)
             .ThenBy(category => category.Category_Id);
+    }
+
+    private async Task ToggleCategoryVisibility(int categoryId)
+    {
+        await using var dbContext = await DbFactory.CreateDbContextAsync();
+
+        var category = await dbContext.Categories
+            .FirstOrDefaultAsync(category => category.Category_Id == categoryId);
+
+        if (category is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        category.Category_IsHidden = !category.Category_IsHidden;
+
+        await dbContext.SaveChangesAsync();
+
+        categories = context!.Categories
+            .AsNoTracking()
+            .OrderBy(category => category.Category_DisplayOrder)
+            .ThenBy(category => category.Category_Id);
+
+        StateHasChanged();
     }
 
     private async Task MoveCategoryUp(int categoryId)

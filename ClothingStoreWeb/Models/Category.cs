@@ -19,6 +19,7 @@ namespace ClothingStoreWeb.Models
 
         [Display(Name = "Порядок отображения")]
         public int Category_DisplayOrder { get; set; }
+        public bool Category_IsHidden { get; set; }
 
         public ICollection<Product> Products { get; set; } = new List<Product>();
     }

@@ -5,15 +5,55 @@
 @using ClothingStoreWeb.Models
 @using ClothingStoreWeb.Data
 @using Microsoft.AspNetCore.Components.Authorization
+@using ClosedXML.Excel
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@using System.Globalization
 @implements IAsyncDisposable
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Товары</PageTitle>
 
 <h1>Товары</h1>
+
+<div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
+    <button type="button"
+            class="btn btn-outline-success"
+            @onclick="ExportProductsToExcelAsync">
+        Экспорт в Excel
+    </button>
+
+    @if (canImport)
+    {
+        <label class="btn btn-outline-primary mb-0">
+            Импорт из Excel
+            <InputFile OnChange="ImportProductsFromExcelAsync"
+                       accept=".xlsx"
+                       style="display: none;" />
+        </label>
+    }
+</div>
+
+@if (!string.IsNullOrWhiteSpace(importResultMessage))
+{
+    <div class="alert @(importHasErrors ? "alert-warning" : "alert-success")">
+        @importResultMessage
+
+        @if (importMessages.Count > 0)
+        {
+            <ul class="mb-0 mt-2">
+                @foreach (var message in importMessages.Take(10))
+                {
+                    <li>@message</li>
+                }
+            </ul>
+        }
+    </div>
+}
 
 @if (canCreate)
 {
@@ -134,6 +174,10 @@
     private bool canEdit;
     private bool canDelete;
     private bool isAdmin;
+    private bool canImport;
+    private string? importResultMessage;
+    private bool importHasErrors;
+    private List<string> importMessages = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -149,6 +193,8 @@
         isAdmin = authState.User.IsInRole("Администратор");
 
         canDelete = isAdmin && await AccessService.CanDeleteAsync("Products");
+
+        canImport = canCreate && canEdit;
 
         context = DbFactory.CreateDbContext();
 
@@ -297,6 +343,340 @@
         {
             await context.DisposeAsync();
         }
+    }
+    
+    private async Task ExportProductsToExcelAsync()
+    {
+        await using var dbContext = await DbFactory.CreateDbContextAsync();
+
+        var productsForExport = await dbContext.Products
+            .Include(product => product.Category)
+            .AsNoTracking()
+            .OrderBy(product => product.Category!.Category_Name)
+            .ThenBy(product => product.Product_DisplayOrder)
+            .ThenBy(product => product.Product_Id)
+            .ToListAsync();
+
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Товары");
+
+        worksheet.Cell(1, 1).Value = "Категория";
+        worksheet.Cell(1, 2).Value = "Название товара";
+        worksheet.Cell(1, 3).Value = "Описание товара";
+        worksheet.Cell(1, 4).Value = "Цена";
+        worksheet.Cell(1, 5).Value = "Цвет";
+        worksheet.Cell(1, 6).Value = "Порядок";
+
+        var headerRange = worksheet.Range(1, 1, 1, 6);
+        headerRange.Style.Font.Bold = true;
+        headerRange.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+        var row = 2;
+
+        foreach (var product in productsForExport)
+        {
+            worksheet.Cell(row, 1).Value = product.Category?.Category_Name ?? "";
+            worksheet.Cell(row, 2).Value = product.Product_Name;
+            worksheet.Cell(row, 3).Value = product.Product_Description ?? "";
+            worksheet.Cell(row, 4).Value = product.Product_Price;
+            worksheet.Cell(row, 5).Value = product.Product_Coloring ?? "";
+            worksheet.Cell(row, 6).Value = product.Product_DisplayOrder;
+
+            row++;
+        }
+
+        worksheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+
+        var fileBytes = stream.ToArray();
+        var base64 = Convert.ToBase64String(fileBytes);
+
+        await JSRuntime.InvokeVoidAsync(
+            "downloadFileFromBytes",
+            "products.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            base64);
+    }
+
+    private async Task ImportProductsFromExcelAsync(InputFileChangeEventArgs e)
+    {
+        importResultMessage = null;
+        importHasErrors = false;
+        importMessages.Clear();
+
+        if (!canImport)
+        {
+            importResultMessage = "Недостаточно прав для импорта товаров.";
+            importHasErrors = true;
+            return;
+        }
+
+        var file = e.File;
+
+        if (file is null)
+        {
+            importResultMessage = "Файл не выбран.";
+            importHasErrors = true;
+            return;
+        }
+
+        if (!Path.GetExtension(file.Name).Equals(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            importResultMessage = "Загрузите файл в формате .xlsx.";
+            importHasErrors = true;
+            return;
+        }
+
+        await using var fileStream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        using var memoryStream = new MemoryStream();
+        await fileStream.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+
+        using var workbook = new XLWorkbook(memoryStream);
+        var worksheet = workbook.Worksheet(1);
+
+        var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 0;
+
+        if (lastRow < 2)
+        {
+            importResultMessage = "В файле нет строк для импорта.";
+            importHasErrors = true;
+            return;
+        }
+
+        await using var dbContext = await DbFactory.CreateDbContextAsync();
+
+        var categories = await dbContext.Categories
+            .ToListAsync();
+
+        var categoryByName = categories
+            .GroupBy(category => NormalizeExcelKey(category.Category_Name))
+            .ToDictionary(group => group.Key, group => group.First());
+
+        var products = await dbContext.Products
+            .ToListAsync();
+
+        var productByKey = products
+            .GroupBy(product => GetProductImportKey(product.Category_Id, product.Product_Name))
+            .ToDictionary(group => group.Key, group => group.First());
+
+        var nextOrderByCategory = products
+            .GroupBy(product => product.Category_Id)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Max(product => product.Product_DisplayOrder) + 1);
+
+        var affectedCategoryIds = new HashSet<int>();
+
+        var addedCount = 0;
+        var updatedCount = 0;
+        var skippedCount = 0;
+
+        for (var row = 2; row <= lastRow; row++)
+        {
+            var categoryName = GetCellText(worksheet, row, 1);
+            var productName = GetCellText(worksheet, row, 2);
+
+            if (string.IsNullOrWhiteSpace(categoryName))
+            {
+                skippedCount++;
+                importMessages.Add($"Строка {row}: не указана категория. Строка пропущена.");
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(productName))
+            {
+                skippedCount++;
+                importMessages.Add($"Строка {row}: не указано название товара. Строка пропущена.");
+                continue;
+            }
+
+            var categoryKey = NormalizeExcelKey(categoryName);
+
+            if (!categoryByName.TryGetValue(categoryKey, out var category))
+            {
+                skippedCount++;
+                importMessages.Add($"Строка {row}: категория \"{categoryName}\" не найдена. Товар не импортирован.");
+                continue;
+            }
+
+            productName = TrimToMaxLength(productName, 150);
+
+            var description = GetCellText(worksheet, row, 3);
+
+            if (string.IsNullOrWhiteSpace(description))
+            {
+                description = "Нет описания";
+            }
+
+            description = TrimToMaxLength(description, 500);
+
+            var price = GetDecimalCellValue(worksheet, row, 4, 0);
+
+            if (price < 0)
+            {
+                price = 0;
+            }
+
+            var coloring = GetCellText(worksheet, row, 5);
+
+            if (string.IsNullOrWhiteSpace(coloring))
+            {
+                coloring = "Цвет не указан";
+            }
+
+            coloring = TrimToMaxLength(coloring, 100);
+
+            var displayOrderFromExcel = GetPositiveIntCellValue(worksheet, row, 6);
+
+            var productKey = GetProductImportKey(category.Category_Id, productName);
+
+            if (productByKey.TryGetValue(productKey, out var existingProduct))
+            {
+                existingProduct.Product_Description = description;
+                existingProduct.Product_Price = price;
+                existingProduct.Product_Coloring = coloring;
+
+                if (displayOrderFromExcel is not null)
+                {
+                    existingProduct.Product_DisplayOrder = displayOrderFromExcel.Value;
+                }
+
+                affectedCategoryIds.Add(existingProduct.Category_Id);
+                updatedCount++;
+            }
+            else
+            {
+                var displayOrder = displayOrderFromExcel ?? GetNextDisplayOrder(category.Category_Id, nextOrderByCategory);
+
+                var newProduct = new Product
+                {
+                    Category_Id = category.Category_Id,
+                    Product_Name = productName,
+                    Product_Description = description,
+                    Product_Price = price,
+                    Product_Coloring = coloring,
+                    Product_DisplayOrder = displayOrder,
+                    Product_IsHidden = true
+                };
+
+                dbContext.Products.Add(newProduct);
+                productByKey[productKey] = newProduct;
+
+                affectedCategoryIds.Add(category.Category_Id);
+                addedCount++;
+            }
+        }
+
+        await dbContext.SaveChangesAsync();
+
+        await NormalizeProductOrdersAsync(dbContext, affectedCategoryIds);
+
+        importHasErrors = skippedCount > 0 || importMessages.Count > 0;
+        importResultMessage = $"Импорт завершён. Добавлено: {addedCount}. Обновлено: {updatedCount}. Пропущено: {skippedCount}.";
+
+        await ReloadProductsAsync();
+    }
+
+    private static string GetCellText(IXLWorksheet worksheet, int row, int column)
+    {
+        return worksheet.Cell(row, column).GetFormattedString().Trim();
+    }
+
+    private static decimal GetDecimalCellValue(IXLWorksheet worksheet, int row, int column, decimal defaultValue)
+    {
+        var text = GetCellText(worksheet, row, column);
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return defaultValue;
+        }
+
+        if (decimal.TryParse(text, NumberStyles.Any, CultureInfo.CurrentCulture, out var currentCultureValue))
+        {
+            return currentCultureValue;
+        }
+
+        if (decimal.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var invariantCultureValue))
+        {
+            return invariantCultureValue;
+        }
+
+        return defaultValue;
+    }
+
+    private static int? GetPositiveIntCellValue(IXLWorksheet worksheet, int row, int column)
+    {
+        var text = GetCellText(worksheet, row, column);
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        if (int.TryParse(text, out var value) && value > 0)
+        {
+            return value;
+        }
+
+        return null;
+    }
+
+    private static string NormalizeExcelKey(string value)
+    {
+        return value.Trim().ToUpperInvariant();
+    }
+
+    private static string GetProductImportKey(int categoryId, string productName)
+    {
+        return $"{categoryId}|{NormalizeExcelKey(productName)}";
+    }
+
+    private static string TrimToMaxLength(string value, int maxLength)
+    {
+        value = value.Trim();
+
+        if (value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return value[..maxLength];
+    }
+
+    private static int GetNextDisplayOrder(int categoryId, Dictionary<int, int> nextOrderByCategory)
+    {
+        if (!nextOrderByCategory.TryGetValue(categoryId, out var nextOrder))
+        {
+            nextOrder = 1;
+        }
+
+        nextOrderByCategory[categoryId] = nextOrder + 1;
+
+        return nextOrder;
+    }
+
+    private static async Task NormalizeProductOrdersAsync(
+        ClothingStoreWeb.Data.ApplicationDbContext dbContext,
+        IEnumerable<int> categoryIds)
+    {
+        foreach (var categoryId in categoryIds.Distinct())
+        {
+            var products = await dbContext.Products
+                .Where(product => product.Category_Id == categoryId)
+                .OrderBy(product => product.Product_DisplayOrder)
+                .ThenBy(product => product.Product_Id)
+                .ToListAsync();
+
+            for (var index = 0; index < products.Count; index++)
+            {
+                products[index].Product_DisplayOrder = index + 1;
+            }
+        }
+
+        await dbContext.SaveChangesAsync();
     }
 
     private async Task ToggleProductHiddenAsync(int productId)

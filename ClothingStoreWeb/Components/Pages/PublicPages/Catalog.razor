@@ -541,6 +541,7 @@
 
         categories = await context.Categories
             .AsNoTracking()
+            .Where(category => !category.Category_IsHidden)
             .OrderBy(category => category.Category_DisplayOrder)
             .ThenBy(category => category.Category_Id)
             .ToListAsync();
@@ -698,7 +699,10 @@
 
         var query = context.Products
             .Include(product => product.Category)
-            .Where(product => !product.Product_IsHidden)
+            .Where(product =>
+                !product.Product_IsHidden &&
+                 product.Category != null &&
+                !product.Category.Category_IsHidden)
             .AsQueryable();
 
         if (selectedCategoryId is not null)
