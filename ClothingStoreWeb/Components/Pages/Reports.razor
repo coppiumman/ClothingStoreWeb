@@ -1,0 +1,602 @@
+@page "/reports"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Data
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Отчёты</PageTitle>
+
+<h1>Отчёты и статистика</h1>
+
+@if (!canViewReports)
+{
+    <p><em>Проверка доступа...</em></p>
+}
+else
+{
+    <p class="text-muted">
+        На странице отображаются основные показатели интернет-магазина: заказы, продажи, популярные товары и складские остатки.
+    </p>
+
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Товары</h5>
+                    <div class="fs-3">@totalProducts</div>
+                    <div class="text-muted">Всего товаров</div>
+                    <div class="small mt-2">Скрыто: @hiddenProducts</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Заказы</h5>
+                    <div class="fs-3">@totalOrders</div>
+                    <div class="text-muted">Всего заказов</div>
+                    <div class="small mt-2">Отменено: @cancelledOrders</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Выручка</h5>
+                    <div class="fs-3">@totalRevenue.ToString("N2") ₽</div>
+                    <div class="text-muted">По завершённым заказам за последний год</div>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary mt-2"
+                            @onclick="OpenRevenueDetails">
+                        Подробнее
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Низкий остаток</h5>
+                    <div class="fs-3">@lowStockCount</div>
+                    <div class="text-muted">Товаров и размеров с малым количеством</div>
+                    <div class="small mt-2">Нет в наличии: @zeroStockCount</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isRevenueDetailsOpen)
+    {
+        <div class="report-modal-backdrop">
+            <div class="report-modal">
+                <div class="report-modal-header">
+                    <h2>Подробная статистика по выручке</h2>
+
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Закрыть"
+                            @onclick="CloseRevenueDetails">
+                    </button>
+                </div>
+
+                <div class="report-modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">За всё время</h5>
+                                    <div class="fs-4">@totalRevenueAllTime.ToString("N2") ₽</div>
+                                    <div class="text-muted">По завершённым заказам</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">За последний год</h5>
+                                    <div class="fs-4">@totalRevenue.ToString("N2") ₽</div>
+                                    <div class="text-muted">По завершённым заказам</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Выручка по годам</h3>
+
+                    @if (revenueByYear.Count == 0)
+                    {
+                        <p>Данных по выручке пока нет.</p>
+                    }
+                    else
+                    {
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Год</th>
+                                    <th>Количество завершённых заказов</th>
+                                    <th>Сумма</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in revenueByYear)
+                                {
+                                    <tr>
+                                        <td>@item.Year</td>
+                                        <td>@item.OrderCount</td>
+                                        <td>@item.TotalAmount.ToString("N2") ₽</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+
+                <div class="report-modal-footer">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            @onclick="CloseRevenueDetails">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <h2>Заказы по статусам</h2>
+
+    @if (ordersByStatus.Count == 0)
+    {
+        <p>Заказы пока не найдены.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Статус</th>
+                    <th>Количество заказов</th>
+                    <th>Сумма заказов</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in ordersByStatus)
+                {
+                    <tr>
+                        <td>@item.Status</td>
+                        <td>@item.OrderCount</td>
+                        <td>@item.TotalAmount.ToString("N2") ₽</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2>Топ товаров по продажам</h2>
+
+    @if (topProducts.Count == 0)
+    {
+        <p>Продажи товаров пока не найдены.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Товар</th>
+                    <th>Категория</th>
+                    <th>Продано</th>
+                    <th>Сумма продаж</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in topProducts)
+                {
+                    <tr>
+                        <td>@item.ProductName</td>
+                        <td>@item.CategoryName</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.TotalAmount.ToString("N2") ₽</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2>Товары с низким остатком</h2>
+
+    @if (lowStockItems.Count == 0)
+    {
+        <p>Товаров с низким остатком нет.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Категория</th>
+                    <th>Товар</th>
+                    <th>Размер</th>
+                    <th>Остаток</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in lowStockItems)
+                {
+                    <tr>
+                        <td>@item.CategoryName</td>
+                        <td>@item.ProductName</td>
+                        <td>@item.SizeName</td>
+                        <td>@item.Quantity</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <h2>Выручка по месяцам</h2>
+
+    @if (revenueByMonth.Count == 0)
+    {
+        <p>Данных по выручке пока нет.</p>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Месяц</th>
+                    <th>Количество заказов</th>
+                    <th>Сумма</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in revenueByMonth)
+                {
+                    <tr>
+                        <td>@item.MonthName</td>
+                        <td>@item.OrderCount</td>
+                        <td>@item.TotalAmount.ToString("N2") ₽</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private bool canViewReports;
+
+    private int totalProducts;
+    private int hiddenProducts;
+    private int totalOrders;
+    private int cancelledOrders;
+    private decimal totalRevenue;
+    private decimal totalRevenueAllTime;
+    private bool isRevenueDetailsOpen;
+    private int lowStockCount;
+    private int zeroStockCount;
+
+    private List<OrderStatusReportRow> ordersByStatus = new();
+    private List<TopProductReportRow> topProducts = new();
+    private List<LowStockReportRow> lowStockItems = new();
+    private List<MonthlyRevenueReportRow> revenueByMonth = new();
+    private List<YearlyRevenueReportRow> revenueByYear = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var canViewProducts = await AccessService.CanViewAsync("Products");
+        var canViewStocks = await AccessService.CanViewAsync("Stocks");
+        var canViewOrders = await AccessService.CanViewAsync("Orders");
+        var canViewOrderItems = await AccessService.CanViewAsync("OrderItems");
+
+        canViewReports = canViewProducts || canViewStocks || canViewOrders || canViewOrderItems;
+
+        if (!canViewReports)
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        if (canViewProducts)
+        {
+            await LoadProductStatisticsAsync(context);
+        }
+
+        if (canViewOrders)
+        {
+            await LoadOrderStatisticsAsync(context);
+        }
+
+        if (canViewStocks)
+        {
+            await LoadStockStatisticsAsync(context);
+        }
+
+        if (canViewOrderItems)
+        {
+            await LoadTopProductsAsync(context);
+        }
+    }
+
+    private async Task LoadProductStatisticsAsync(ApplicationDbContext context)
+    {
+        var products = await context.Products
+            .AsNoTracking()
+            .ToListAsync();
+
+        totalProducts = products.Count;
+        hiddenProducts = products.Count(product => product.Product_IsHidden);
+    }
+
+    private async Task LoadOrderStatisticsAsync(ApplicationDbContext context)
+    {
+        var orders = await context.Orders
+            .AsNoTracking()
+            .ToListAsync();
+
+        totalOrders = orders.Count;
+        cancelledOrders = orders.Count(order => IsCancelledStatus(order.Order_Status));
+
+        var lastYearDate = DateTime.Now.AddYears(-1);
+
+        totalRevenue = orders
+            .Where(order =>
+                IsRevenueStatus(order.Order_Status) &&
+                order.Order_Date >= lastYearDate)
+            .Sum(order => order.Order_TotalAmount);
+
+        totalRevenueAllTime = orders
+            .Where(order => IsRevenueStatus(order.Order_Status))
+            .Sum(order => order.Order_TotalAmount);
+
+        revenueByYear = orders
+            .Where(order => IsRevenueStatus(order.Order_Status))
+            .GroupBy(order => order.Order_Date.Year)
+            .Select(group => new YearlyRevenueReportRow
+            {
+                Year = group.Key,
+                OrderCount = group.Count(),
+                TotalAmount = group.Sum(order => order.Order_TotalAmount)
+            })
+            .OrderByDescending(row => row.Year)
+            .ToList();
+
+        ordersByStatus = orders
+            .GroupBy(order => string.IsNullOrWhiteSpace(order.Order_Status) ? "unknown" : order.Order_Status)
+            .Select(group => new OrderStatusReportRow
+            {
+                Status = GetOrderStatusName(group.Key),
+                OrderCount = group.Count(),
+                TotalAmount = group.Sum(order => order.Order_TotalAmount)
+            })
+            .OrderByDescending(row => row.OrderCount)
+            .ThenBy(row => row.Status)
+            .ToList();
+
+        revenueByMonth = orders
+            .Where(order => IsRevenueStatus(order.Order_Status))
+            .GroupBy(order => new
+            {
+                order.Order_Date.Year,
+                order.Order_Date.Month
+            })
+            .Select(group => new MonthlyRevenueReportRow
+            {
+                Year = group.Key.Year,
+                Month = group.Key.Month,
+                MonthName = $"{group.Key.Month:D2}.{group.Key.Year}",
+                OrderCount = group.Count(),
+                TotalAmount = group.Sum(order => order.Order_TotalAmount)
+            })
+            .OrderByDescending(row => row.Year)
+            .ThenByDescending(row => row.Month)
+            .ToList();
+    }
+
+    private async Task LoadStockStatisticsAsync(ApplicationDbContext context)
+    {
+        var stocks = await context.Stocks
+            .Include(stock => stock.Product)
+                .ThenInclude(product => product!.Category)
+            .Include(stock => stock.Size)
+            .AsNoTracking()
+            .ToListAsync();
+
+        lowStockCount = stocks.Count(stock => stock.Stock_Quantity <= 3);
+        zeroStockCount = stocks.Count(stock => stock.Stock_Quantity == 0);
+
+        lowStockItems = stocks
+            .Where(stock => stock.Stock_Quantity <= 3)
+            .OrderBy(stock => stock.Stock_Quantity)
+            .ThenBy(stock => stock.Product?.Category?.Category_Name)
+            .ThenBy(stock => stock.Product?.Product_Name)
+            .Select(stock => new LowStockReportRow
+            {
+                CategoryName = stock.Product?.Category?.Category_Name ?? "Без категории",
+                ProductName = stock.Product?.Product_Name ?? "Без названия",
+                SizeName = stock.Size?.Size_Name ?? "Без размера",
+                Quantity = stock.Stock_Quantity
+            })
+            .Take(15)
+            .ToList();
+    }
+
+    private async Task LoadTopProductsAsync(ApplicationDbContext context)
+    {
+        var orderItems = await context.OrderItems
+            .Include(orderItem => orderItem.Order)
+            .Include(orderItem => orderItem.Product)
+                .ThenInclude(product => product!.Category)
+            .AsNoTracking()
+            .ToListAsync();
+
+        topProducts = orderItems
+            .Where(orderItem => orderItem.Order is not null &&
+                                !IsCancelledStatus(orderItem.Order.Order_Status))
+            .GroupBy(orderItem => new
+            {
+                orderItem.Product_Id,
+                ProductName = orderItem.Product?.Product_Name ?? "Без названия",
+                CategoryName = orderItem.Product?.Category?.Category_Name ?? "Без категории"
+            })
+            .Select(group => new TopProductReportRow
+            {
+                ProductName = group.Key.ProductName,
+                CategoryName = group.Key.CategoryName,
+                Quantity = group.Sum(orderItem => orderItem.OrderItem_Quantity),
+                TotalAmount = group.Sum(orderItem => orderItem.OrderItem_Quantity * orderItem.OrderItem_Price)
+            })
+            .OrderByDescending(row => row.Quantity)
+            .ThenByDescending(row => row.TotalAmount)
+            .Take(10)
+            .ToList();
+    }
+
+    private void OpenRevenueDetails()
+    {
+        isRevenueDetailsOpen = true;
+    }
+
+    private void CloseRevenueDetails()
+    {
+        isRevenueDetailsOpen = false;
+    }
+
+    private static bool IsCancelledStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return false;
+        }
+
+        return status.Equals("cancelled", StringComparison.OrdinalIgnoreCase) ||
+               status.Contains("отмен", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsRevenueStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return false;
+        }
+
+        return status.Equals("done", StringComparison.OrdinalIgnoreCase) ||
+               status.Contains("заверш", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetOrderStatusName(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return "Не указан";
+        }
+
+        return status.ToLowerInvariant() switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => status
+        };
+    }
+
+    private class OrderStatusReportRow
+    {
+        public string Status { get; set; } = string.Empty;
+        public int OrderCount { get; set; }
+        public decimal TotalAmount { get; set; }
+    }
+
+    private class TopProductReportRow
+    {
+        public string ProductName { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal TotalAmount { get; set; }
+    }
+
+    private class LowStockReportRow
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public string SizeName { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
+
+    private class MonthlyRevenueReportRow
+    {
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public string MonthName { get; set; } = string.Empty;
+        public int OrderCount { get; set; }
+        public decimal TotalAmount { get; set; }
+    }
+
+    private class YearlyRevenueReportRow
+    {
+        public int Year { get; set; }
+        public int OrderCount { get; set; }
+        public decimal TotalAmount { get; set; }
+    }
+}
+
+<style>
+    .report-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1050;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+    }
+
+    .report-modal {
+        width: min(900px, 100%);
+        max-height: 90vh;
+        overflow-y: auto;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+    }
+
+    .report-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 20px 24px;
+        border-bottom: 1px solid #e5e5e5;
+    }
+
+        .report-modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+    .report-modal-body {
+        padding: 24px;
+    }
+
+    .report-modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e5e5e5;
+        text-align: right;
+    }
+</style>
