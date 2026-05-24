@@ -1,5 +1,6 @@
 @page "/Account/Register"
 @layout PublicLayout
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -16,49 +17,82 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Register</PageTitle>
+<PageTitle>Регистрация</PageTitle>
 
-<h1>Register</h1>
-
-<div class="row">
-    <div class="col-lg-6">
+<section class="account-page">
+    <div class="account-card">
         <StatusMessage Message="@Message" />
+
+        <div class="account-header">
+            <h1>Регистрация</h1>
+            <p>
+                Создайте аккаунт, чтобы оформлять заказы, просматривать историю покупок
+                и управлять личными данными.
+            </p>
+        </div>
+
         <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
             <DataAnnotationsValidator />
-            <h2>Create a new account.</h2>
-            <hr />
             <ValidationSummary class="text-danger" role="alert" />
+
             <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.UserFullName" id="Input.UserFullName" class="form-control" autocomplete="name" aria-required="true" placeholder="Ваше имя" />
+                <InputText @bind-Value="Input.UserFullName"
+                           id="Input.UserFullName"
+                           class="form-control"
+                           autocomplete="name"
+                           aria-required="true"
+                           placeholder="Ваше имя" />
                 <label for="Input.UserFullName">ФИО</label>
                 <ValidationMessage For="() => Input.UserFullName" class="text-danger" />
             </div>
+
             <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                <label for="Input.Email">Email</label>
+                <InputText @bind-Value="Input.Email"
+                           id="Input.Email"
+                           class="form-control"
+                           autocomplete="username"
+                           aria-required="true"
+                           placeholder="name@example.com" />
+                <label for="Input.Email">Электронная почта</label>
                 <ValidationMessage For="() => Input.Email" class="text-danger" />
             </div>
+
             <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="Input.Password">Password</label>
+                <InputText type="password"
+                           @bind-Value="Input.Password"
+                           id="Input.Password"
+                           class="form-control"
+                           autocomplete="new-password"
+                           aria-required="true"
+                           placeholder="password" />
+                <label for="Input.Password">Пароль</label>
                 <ValidationMessage For="() => Input.Password" class="text-danger" />
             </div>
+
             <div class="form-floating mb-3">
-                <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                <label for="Input.ConfirmPassword">Confirm Password</label>
+                <InputText type="password"
+                           @bind-Value="Input.ConfirmPassword"
+                           id="Input.ConfirmPassword"
+                           class="form-control"
+                           autocomplete="new-password"
+                           aria-required="true"
+                           placeholder="password" />
+                <label for="Input.ConfirmPassword">Повторите пароль</label>
                 <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
+
+            <button type="submit" class="account-submit">
+                Зарегистрироваться
+            </button>
+
+            <div class="account-links">
+                <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">
+                    Уже есть аккаунт? Войти
+                </a>
+            </div>
         </EditForm>
     </div>
-    <div class="col-lg-4 col-lg-offset-2">
-        <section>
-            <h3>Use another service to register.</h3>
-            <hr />
-            <ExternalLoginPicker />
-        </section>
-    </div>
-</div>
+</section>
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;
@@ -69,7 +103,7 @@
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
-    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
+    private string? Message => identityErrors is null ? null : $"Ошибка: {string.Join(", ", identityErrors.Select(error => error.Description))}";
 
     public async Task RegisterUser(EditContext editContext)
     {
@@ -139,20 +173,20 @@
         [Display(Name = "ФИО")]
         public string UserFullName { get; set; } = "";
 
-        [Required]
-        [EmailAddress]
-        [Display(Name = "Email")]
+        [Required(ErrorMessage = "Введите электронную почту")]
+        [EmailAddress(ErrorMessage = "Введите корректную электронную почту")]
+        [Display(Name = "Электронная почта")]
         public string Email { get; set; } = "";
 
-        [Required]
-        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [Required(ErrorMessage = "Введите пароль")]
+        [StringLength(100, ErrorMessage = "Пароль должен содержать не менее {2} символов.", MinimumLength = 6)]
         [DataType(DataType.Password)]
-        [Display(Name = "Password")]
+        [Display(Name = "Пароль")]
         public string Password { get; set; } = "";
 
         [DataType(DataType.Password)]
-        [Display(Name = "Confirm password")]
-        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        [Display(Name = "Повторите пароль")]
+        [Compare("Password", ErrorMessage = "Пароль и подтверждение пароля не совпадают.")]
         public string ConfirmPassword { get; set; } = "";
     }
 }

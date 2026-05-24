@@ -7,9 +7,11 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Globalization
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Каталог товаров</PageTitle>
 
@@ -33,7 +35,8 @@
                 @foreach (var category in categories)
                 {
                     <button type="button"
-                            class="catalog-category-button @(selectedCategoryId == category.Category_Id ? "active" : "")"
+                            class="catalog-category-button @(selectedCategoryId == category.Category_Id ? "active" : "") @(category.Category_IsHidden ? "catalog-category-hidden" : "")"
+                            title="@(category.Category_IsHidden ? "Категория скрыта и не отображается обычным пользователям" : null)"
                             @onclick="() => SelectCategory(category.Category_Id)">
                         @category.Category_Name
                     </button>
@@ -296,7 +299,16 @@
     <div class="catalog-grid">
         @foreach (var product in products)
         {
-            <div class="catalog-card">
+            <div class="@GetProductCardClass(product)"
+                 title="@GetProductCardTitle(product)">
+
+                @if (isEmployeeOrAdmin && IsProductHiddenFromPublic(product))
+                {
+                    <div class="catalog-hidden-badge">
+                        @GetProductHiddenBadgeText(product)
+                    </div>
+                }
+
                 <a href="@($"/catalog/product/{product.Product_Id}?returnUrl={Uri.EscapeDataString(GetCurrentCatalogUrl())}")"
                    class="catalog-image-link">
                     <div class="catalog-image">
@@ -350,6 +362,8 @@
     private HashSet<int> draftSizeIds = new();
     private decimal? draftMinPrice;
     private decimal? draftMaxPrice;
+
+    private bool isEmployeeOrAdmin;
 
     private ElementReference categoryListRef;
 
@@ -519,6 +533,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadAccessStateAsync();
+
         await LoadCategoriesAsync();
         await LoadColorsAsync();
         await LoadSizesAsync();
@@ -535,13 +551,30 @@
         return Task.CompletedTask;
     }
 
+    private async Task LoadAccessStateAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        isEmployeeOrAdmin =
+            user.IsInRole("Сотрудник") ||
+            user.IsInRole("Администратор");
+    }
+
     private async Task LoadCategoriesAsync()
     {
         await using var context = await DbFactory.CreateDbContextAsync();
 
-        categories = await context.Categories
+        var query = context.Categories
             .AsNoTracking()
-            .Where(category => !category.Category_IsHidden)
+            .AsQueryable();
+
+        if (!isEmployeeOrAdmin)
+        {
+            query = query.Where(category => !category.Category_IsHidden);
+        }
+
+        categories = await query
             .OrderBy(category => category.Category_DisplayOrder)
             .ThenBy(category => category.Category_Id)
             .ToListAsync();
@@ -551,12 +584,22 @@
     {
         await using var context = await DbFactory.CreateDbContextAsync();
 
-        colors = await context.Products
+        var query = context.Products
+            .Include(product => product.Category)
             .AsNoTracking()
             .Where(product =>
-                !product.Product_IsHidden &&
                 product.Product_Coloring != null &&
-                product.Product_Coloring != "")
+                product.Product_Coloring != "");
+
+        if (!isEmployeeOrAdmin)
+        {
+            query = query.Where(product =>
+                !product.Product_IsHidden &&
+                product.Category != null &&
+                !product.Category.Category_IsHidden);
+        }
+
+        colors = await query
             .Select(product => product.Product_Coloring!)
             .Distinct()
             .OrderBy(color => color)
@@ -573,12 +616,21 @@
 
         var query = context.Stocks
             .Include(stock => stock.Product)
+                .ThenInclude(product => product!.Category)
             .AsNoTracking()
             .Where(stock =>
                 stock.Stock_Quantity > 0 &&
-                stock.Product != null &&
-                !stock.Product.Product_IsHidden)
+                stock.Product != null)
             .AsQueryable();
+
+        if (!isEmployeeOrAdmin)
+        {
+            query = query.Where(stock =>
+                !stock.Product!.Product_IsHidden &&
+                stock.Product.Category != null &&
+                !stock.Product.Category.Category_IsHidden);
+        }
+
         if (selectedCategoryId is not null)
         {
             query = query.Where(stock => stock.Product!.Category_Id == selectedCategoryId);
@@ -634,12 +686,20 @@
 
         var query = context.Stocks
             .Include(stock => stock.Product)
+                .ThenInclude(product => product!.Category)
             .AsNoTracking()
             .Where(stock =>
                 stock.Stock_Quantity > 0 &&
-                stock.Product != null &&
-                !stock.Product.Product_IsHidden)
+                stock.Product != null)
             .AsQueryable();
+
+        if (!isEmployeeOrAdmin)
+        {
+            query = query.Where(stock =>
+                !stock.Product!.Product_IsHidden &&
+                stock.Product.Category != null &&
+                !stock.Product.Category.Category_IsHidden);
+        }
 
         if (selectedCategoryId is not null)
         {
@@ -699,11 +759,15 @@
 
         var query = context.Products
             .Include(product => product.Category)
-            .Where(product =>
-                !product.Product_IsHidden &&
-                 product.Category != null &&
-                !product.Category.Category_IsHidden)
             .AsQueryable();
+
+        if (!isEmployeeOrAdmin)
+        {
+            query = query.Where(product =>
+                !product.Product_IsHidden &&
+                product.Category != null &&
+                !product.Category.Category_IsHidden);
+        }
 
         if (selectedCategoryId is not null)
         {
@@ -1068,5 +1132,58 @@
     private async Task ScrollCategoriesRight()
     {
         await JSRuntime.InvokeVoidAsync("catalogCategories.scroll", categoryListRef, 320);
+    }
+
+    private static bool IsProductHiddenFromPublic(Product product)
+    {
+        return product.Product_IsHidden ||
+               product.Category?.Category_IsHidden == true;
+    }
+
+    private static string GetProductCardClass(Product product)
+    {
+        return IsProductHiddenFromPublic(product)
+            ? "catalog-card catalog-card-hidden"
+            : "catalog-card";
+    }
+
+    private static string? GetProductCardTitle(Product product)
+    {
+        if (product.Product_IsHidden && product.Category?.Category_IsHidden == true)
+        {
+            return "Товар и его категория скрыты. Обычные пользователи не видят эту карточку.";
+        }
+
+        if (product.Product_IsHidden)
+        {
+            return "Товар скрыт и не отображается обычным пользователям.";
+        }
+
+        if (product.Category?.Category_IsHidden == true)
+        {
+            return "Категория товара скрыта. Обычные пользователи не видят эту карточку.";
+        }
+
+        return null;
+    }
+
+    private static string GetProductHiddenBadgeText(Product product)
+    {
+        if (product.Product_IsHidden && product.Category?.Category_IsHidden == true)
+        {
+            return "Товар и категория скрыты";
+        }
+
+        if (product.Product_IsHidden)
+        {
+            return "Товар скрыт";
+        }
+
+        if (product.Category?.Category_IsHidden == true)
+        {
+            return "Категория скрыта";
+        }
+
+        return string.Empty;
     }
 }

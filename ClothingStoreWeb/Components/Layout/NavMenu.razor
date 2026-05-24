@@ -4,73 +4,79 @@
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">ClothingStoreWeb</a>
+        <a class="navbar-brand service-brand" href="admin" title="Служебный раздел интернет-магазина одежды">
+            Служебный раздел
+        </a>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<input type="checkbox" title="Меню навигации" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
+
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>
+                Главная сайта
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-        
         <AuthorizeView Roles="Сотрудник,Администратор">
             <Authorized>
                 <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin">
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                        Служебный раздел
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
                     <NavLink class="nav-link" href="categories">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Категории
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                        Категории
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="products">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Товары
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                        Товары
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="sizes">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Размеры
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                        Размеры
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="stocks">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Запасы
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                        Запасы
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="orders">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Заказы
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                        Заказы
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="orderitems">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Элементы заказа
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                        Элементы заказа
                     </NavLink>
                 </div>
 
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="reports">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Отчёты
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                        Отчёты
                     </NavLink>
                 </div>
             </Authorized>
@@ -80,48 +86,13 @@
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="employees">
-                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Сотрудники
+                        <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span>
+                        Сотрудники
                     </NavLink>
                 </div>
             </Authorized>
         </AuthorizeView>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="auth">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Auth Required
-            </NavLink>
-        </div>
-
-        <AuthorizeView>
-            <Authorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Manage">
-                        <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <form action="Account/Logout" method="post">
-                        <AntiforgeryToken />
-                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                        <button type="submit" class="nav-link">
-                            <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
-                        </button>
-                    </form>
-                </div>
-            </Authorized>
-            <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Register">
-                        <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
-                    </NavLink>
-                </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Login">
-                        <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
-                    </NavLink>
-                </div>
-            </NotAuthorized>
-        </AuthorizeView>
     </nav>
 </div>
 
@@ -145,4 +116,3 @@
         NavigationManager.LocationChanged -= OnLocationChanged;
     }
 }
-

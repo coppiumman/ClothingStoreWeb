@@ -4,19 +4,52 @@
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
+@using ClothingStoreWeb.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
-@using ClothingStoreWeb.Services
 @inject CartService CartService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>@(product?.Product_Name ?? "Товар")</PageTitle>
 
-@if (product is null)
+@if (isProductUnavailableForPublic)
+{
+    <section class="product-unavailable">
+        <h1>Товар не найден или временно недоступен</h1>
+        <p>
+            Возможно, товар был скрыт или временно недоступен для просмотра.
+        </p>
+
+        <a class="product-unavailable-button" href="/catalog">
+            Вернуться в каталог
+        </a>
+    </section>
+}
+else if (product is null)
 {
     <p><em>Загрузка...</em></p>
 }
 else
 {
+    @if (isEmployeeOrAdmin && IsCurrentProductHiddenFromPublic())
+    {
+        <div class="product-hidden-warning">
+            <strong>Страница скрыта.</strong>
+            Этот товар недоступен обычным пользователям в публичной части сайта.
+
+            @if (product.Product_IsHidden)
+            {
+                <div>Причина: товар скрыт в служебном разделе.</div>
+            }
+
+            @if (product.Category?.Category_IsHidden == true)
+            {
+                <div>Причина: категория товара скрыта в служебном разделе.</div>
+            }
+        </div>
+    }
+
     <div class="product-details">
         <div class="product-details-images">
             @{
@@ -320,6 +353,8 @@ else
     public string? ReturnUrl { get; set; }
 
     private Product? product;
+    private bool isEmployeeOrAdmin;
+    private bool isProductUnavailableForPublic;
     private List<Stock> stocks = new();
     private List<Product> recommendedProducts = new();
     private int? selectedStockId;
@@ -356,19 +391,32 @@ else
 
         await using var context = await DbFactory.CreateDbContextAsync();
 
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        isEmployeeOrAdmin =
+            user.IsInRole("Сотрудник") ||
+            user.IsInRole("Администратор");
+
+        isProductUnavailableForPublic = false;
+
         product = await context.Products
             .Include(product => product.Category)
             .AsNoTracking()
-            .FirstOrDefaultAsync(product =>
-                product.Product_Id == ProductId &&
-                !product.Product_IsHidden);
+            .FirstOrDefaultAsync(product => product.Product_Id == ProductId);
 
         if (product is null)
         {
-            NavigationManager.NavigateTo("/not-found");
+            isProductUnavailableForPublic = true;
             return;
         }
 
+        if ((product.Product_IsHidden || product.Category?.Category_IsHidden == true) && !isEmployeeOrAdmin)
+        {
+            product = null;
+            isProductUnavailableForPublic = true;
+            return;
+        }
         stocks = await context.Stocks
             .Include(stock => stock.Size)
             .AsNoTracking()
@@ -382,6 +430,8 @@ else
             .Where(item =>
                 item.Product_Id != ProductId &&
                 !item.Product_IsHidden &&
+                item.Category != null &&
+                !item.Category.Category_IsHidden &&
                 !string.IsNullOrWhiteSpace(item.Product_ImagePath))
             .OrderBy(item => Guid.NewGuid())
             .Take(4)
@@ -645,6 +695,12 @@ else
         wasImageDragged = false;
         imageOffsetX = 0;
         imageOffsetY = 0;
+    }
+
+    private bool IsCurrentProductHiddenFromPublic()
+    {
+        return product?.Product_IsHidden == true ||
+               product?.Category?.Category_IsHidden == true;
     }
 
 }

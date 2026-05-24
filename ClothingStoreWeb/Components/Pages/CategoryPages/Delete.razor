@@ -6,39 +6,68 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Удаление</PageTitle>
+<PageTitle>Удаление категории</PageTitle>
 
-<h1>Удаление</h1>
+<div class="category-form-page">
+    <div class="category-form-header">
+        <div>
+            <h1>Удаление категории</h1>
+            <p>
+                Перед удалением проверьте выбранную категорию. Если категория используется товарами,
+                приложение не позволит удалить её до переноса или удаления связанных товаров.
+            </p>
+        </div>
+    </div>
 
-<p>Вы уверены, что хотите удалить этот элемент?</p>
-<div>
-    <h2>Категория</h2>
-    <hr />
     @if (category is null)
     {
-        <p><em>Загрузка...</em></p>
+        <div class="category-form-card">
+            <p><em>Загрузка...</em></p>
+        </div>
     }
-    else {
-        <dl class="row">
-            <dt class="col-sm-2">Название категории</dt>
-            <dd class="col-sm-10">@category.Category_Name</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Описание категории</dt>
-            <dd class="col-sm-10">@category.Category_Description</dd>
-        </dl>
+    else
+    {
+        <div class="category-form-card category-delete-card">
+            <div class="category-warning">
+                Вы действительно хотите удалить эту категорию?
+            </div>
+
+            <div class="category-details-list">
+                <div class="category-details-row">
+                    <span>Название категории</span>
+                    <strong>@category.Category_Name</strong>
+                </div>
+
+                <div class="category-details-row">
+                    <span>Описание категории</span>
+                    <strong>
+                        @(string.IsNullOrWhiteSpace(category.Category_Description)
+                         ? "Описание не указано"
+                         : category.Category_Description)
+                </strong>
+            </div>
+        </div>
 
         @if (!string.IsNullOrWhiteSpace(deleteError))
-        {
-            <div class="alert alert-danger">
-                @deleteError
-            </div>
-        }
+            {
+                <div class="category-error">
+                    @deleteError
+                </div>
+            }
 
-        <EditForm method="post" Model="category" OnValidSubmit="DeleteCategory" FormName="delete" Enhance>
-            <button type="submit" class="btn btn-danger" disabled="@(category is null)">Удалить</button> |
-            <a href="/categories">Вернуться к списку</a>
-        </EditForm>
+            <EditForm method="post" Model="category" OnValidSubmit="DeleteCategory" FormName="delete" Enhance>
+                <div class="category-form-actions">
+                    <button type="submit"
+                            class="category-delete-button"
+                            disabled="@(category is null)">
+                        Удалить категорию
+                    </button>
+                    <a class="category-secondary-button" href="/categories">
+                        Отмена
+                    </a>
+                </div>
+            </EditForm>
+        </div>
     }
 </div>
 

@@ -16,75 +16,91 @@
 
 <PageTitle>Категории</PageTitle>
 
-<h1>Категории</h1>
+<div class="category-page">
+    <div class="category-header">
+        <div>
+            <h1>Категории</h1>
+            <p>
+                Управление разделами каталога: добавление, изменение порядка,
+                скрытие и отображение категорий на публичной странице интернет-магазина.
+            </p>
+        </div>
 
-<div class="mb-3">
-    <button type="button"
-            class="btn btn-outline-success"
-            @onclick="ExportCategoriesToExcelAsync">
-        Экспорт в Excel
-    </button>
+        <div class="category-header-actions">
+            <button type="button"
+                    class="category-button category-button-export"
+                    @onclick="ExportCategoriesToExcelAsync">
+                Экспорт в Excel
+            </button>
+
+            @if (canCreate)
+            {
+                <a class="category-button category-button-primary" href="categories/create">
+                    Добавить категорию
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="category-table-card">
+        <QuickGrid Class="table categories-table" Items="categories">
+            <PropertyColumn Property="category => category.Category_Name" Title="Название категории" />
+            <PropertyColumn Property="category => category.Category_Description" Title="Описание категории" />
+            <PropertyColumn Property="category => category.Category_DisplayOrder" Title="Порядок" />
+
+            <TemplateColumn Title="Статус" Context="category">
+                @if (category.Category_IsHidden)
+                {
+                    <span class="category-status category-status-hidden">Скрыта</span>
+                }
+                else
+                {
+                    <span class="category-status category-status-visible">Отображается</span>
+                }
+            </TemplateColumn>
+
+            <TemplateColumn Title="Действия" Context="category">
+                <div class="category-actions">
+                    @if (canEdit)
+                    {
+                        <button type="button"
+                                class="category-icon-button"
+                                title="Переместить выше"
+                                @onclick="() => MoveCategoryUp(category.Category_Id)">
+                            ↑
+                        </button>
+
+                        <button type="button"
+                                class="category-icon-button"
+                                title="Переместить ниже"
+                                @onclick="() => MoveCategoryDown(category.Category_Id)">
+                            ↓
+                        </button>
+
+                        <button type="button"
+                                class="category-small-button"
+                                @onclick="() => ToggleCategoryVisibility(category.Category_Id)">
+                            @(category.Category_IsHidden ? "Показать" : "Скрыть")
+                        </button>
+
+                        <a class="category-action-button category-action-edit"
+                           href="@($"categories/edit?category_id={category.Category_Id}")">
+                            Изменить
+                        </a>
+                    }
+
+                    @if (canDelete)
+                    {
+                        <a class="category-action-button category-action-delete"
+                           href="@($"categories/delete?category_id={category.Category_Id}")">
+                            Удалить
+                        </a>
+                    }
+                </div>
+            </TemplateColumn>
+        </QuickGrid>
+    </div>
 </div>
-
-@if (canCreate)
-{
-    <p>
-        <a href="categories/create">Добавить</a>
-    </p>
-}
-
-<QuickGrid Class="table" Items="categories">
-    <PropertyColumn Property="category => category.Category_Name" Title="Название категории" />
-    <PropertyColumn Property="category => category.Category_Description" Title="Описание категории" />
-    <PropertyColumn Property="category => category.Category_DisplayOrder" Title="Порядок" />
-    <TemplateColumn Title="Статус" Context="category">
-        @if (category.Category_IsHidden)
-        {
-            <span class="text-muted">Скрыта</span>
-        }
-        else
-        {
-            <span>Отображается</span>
-        }
-    </TemplateColumn>
-    <TemplateColumn Context="category">
-        @if (canEdit)
-        {
-            <button type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    @onclick="() => MoveCategoryUp(category.Category_Id)">
-                ↑
-            </button>
-
-            <button type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    @onclick="() => MoveCategoryDown(category.Category_Id)">
-                ↓
-            </button>
-
-            <span> | </span>
-
-            <button type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    @onclick="() => ToggleCategoryVisibility(category.Category_Id)">
-                @(category.Category_IsHidden ? "Показать" : "Скрыть")
-            </button>
-
-            <span> | </span>
-
-            <a href="@($"categories/edit?category_id={category.Category_Id}")">Изменить</a>
-            <span> | </span>
-        }
-
-        <a href="@($"categories/details?category_id={category.Category_Id}")">Подробнее</a>
-
-        @if (canDelete)
-        {
-            <span> | </span>
-            <a href="@($"categories/delete?category_id={category.Category_Id}")">Удалить</a>
-        }
-    </TemplateColumn>
-</QuickGrid>
 
 @code {
     private ApplicationDbContext? context;

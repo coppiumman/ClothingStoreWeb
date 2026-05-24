@@ -1,0 +1,208 @@
+.category-form-page {
+    max-width: 920px;
+}
+
+.category-form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #e7e7e7;
+}
+
+    .category-form-header h1 {
+        margin: 0 0 8px;
+        font-size: 34px;
+        font-weight: 500;
+        color: #111;
+    }
+
+    .category-form-header p {
+        max-width: 680px;
+        margin: 0;
+        color: #666;
+        line-height: 1.45;
+    }
+
+.category-form-card {
+    background: #fff;
+    border: 1px solid #e4e4e4;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.04);
+    padding: 26px 28px;
+}
+
+.category-field {
+    margin-bottom: 18px;
+}
+
+    .category-field label {
+        display: block;
+        margin-bottom: 7px;
+        font-weight: 500;
+        color: #222;
+    }
+
+        .category-field label span {
+            color: #a32020;
+        }
+
+    .category-field .form-control {
+        min-height: 42px;
+        border-radius: 0;
+        border-color: #d6d6d6;
+    }
+
+        .category-field .form-control:focus {
+            border-color: #222;
+            box-shadow: none;
+        }
+
+.category-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+}
+
+.category-submit-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 9px 18px;
+    border: 1px solid #222;
+    background: #222;
+    color: #fff;
+    text-decoration: none;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+    .category-submit-button:hover {
+        background: #000;
+        border-color: #000;
+        color: #fff;
+    }
+
+.category-submit-link {
+    color: #fff;
+}
+
+.category-details-list {
+    border: 1px solid #eeeeee;
+}
+
+.category-details-row {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 18px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+    .category-details-row:last-child {
+        border-bottom: none;
+    }
+
+    .category-details-row span {
+        color: #666;
+    }
+
+    .category-details-row strong {
+        color: #222;
+        font-weight: 500;
+        word-break: break-word;
+    }
+
+.category-warning {
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    border: 1px solid #ead9a6;
+    background: #fff7df;
+    color: #6f4b00;
+}
+
+.category-error {
+    padding: 14px 16px;
+    margin-top: 18px;
+    border: 1px solid #e5b8b8;
+    background: #fff1f1;
+    color: #8a1f1f;
+}
+
+.category-delete-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 9px 18px;
+    border: 1px solid #9b1c1c;
+    background: #9b1c1c;
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+    .category-delete-button:hover {
+        background: #6f0000;
+        border-color: #6f0000;
+    }
+
+    .category-delete-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+.category-secondary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 9px 18px;
+    border: 1px solid #cfcfcf;
+    background: #fff;
+    color: #222;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+    .category-secondary-button:hover {
+        background: #f2f2f2;
+        border-color: #888;
+        color: #000;
+    }
+
+@media (max-width: 800px) {
+    .category-form-header {
+        flex-direction: column;
+    }
+
+    .category-back-link {
+        margin-top: 0;
+    }
+
+    .category-form-card {
+        padding: 22px 18px;
+    }
+
+    .category-details-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .category-submit-button,
+    .category-delete-button {
+        width: 100%;
+    }
+
+    .category-back-button,
+    .category-secondary-button {
+        width: 100%;
+    }
+}

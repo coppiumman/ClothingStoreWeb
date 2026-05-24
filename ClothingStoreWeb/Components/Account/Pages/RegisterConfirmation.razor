@@ -1,4 +1,6 @@
-﻿@page "/Account/RegisterConfirmation"
+@page "/Account/RegisterConfirmation"
+@layout PublicLayout
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 
 @using System.Text
 @using Microsoft.AspNetCore.Identity
@@ -10,23 +12,46 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Register confirmation</PageTitle>
+<PageTitle>Подтверждение регистрации</PageTitle>
 
-<h1>Register confirmation</h1>
+<section class="account-page">
+    <div class="account-card">
+        <StatusMessage Message="@statusMessage" />
 
-<StatusMessage Message="@statusMessage" />
+        <div class="account-header">
+            <h1>Подтверждение регистрации</h1>
+            <p>
+                Аккаунт создан. Для завершения регистрации необходимо подтвердить электронную почту.
+            </p>
+        </div>
 
-@if (emailConfirmationLink is not null)
-{
-    <p>
-        This app does not currently have a real email sender registered, see <a href="https://aka.ms/aspaccountconf">these docs</a> for how to configure a real email sender.
-        Normally this would be emailed: <a href="@emailConfirmationLink">Click here to confirm your account</a>
-    </p>
-}
-else
-{
-    <p role="alert">Please check your email to confirm your account.</p>
-}
+        @if (emailConfirmationLink is not null)
+        {
+            <div class="account-info">
+                <p>
+                    В демонстрационной версии письмо может не отправляться автоматически.
+                    Для проверки подтверждения можно использовать ссылку ниже.
+                </p>
+
+                <a class="account-submit account-submit-link" href="@emailConfirmationLink">
+                    Подтвердить аккаунт
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="account-info">
+                <p>
+                    Проверьте электронную почту и перейдите по ссылке из письма для подтверждения аккаунта.
+                </p>
+            </div>
+        }
+
+        <div class="account-links">
+            <a href="Account/Login">Перейти ко входу</a>
+        </div>
+    </div>
+</section>
 
 @code {
     private string? emailConfirmationLink;
@@ -52,11 +77,10 @@ else
         if (user is null)
         {
             HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
-            statusMessage = "Error finding user for unspecified email";
+            statusMessage = "Ошибка: пользователь с указанной электронной почтой не найден.";
         }
         else if (EmailSender is IdentityNoOpEmailSender)
         {
-            // Once you add a real email sender, you should remove this code that lets you confirm the account
             var userId = await UserManager.GetUserIdAsync(user);
             var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
