@@ -1,5 +1,19 @@
 @page "/orderitems/create"
 @attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@inject NavigationManager NavigationManager
+
+<PageTitle>Создание недоступно</PageTitle>
+
+@code {
+    protected override Task OnInitializedAsync()
+    {
+        NavigationManager.NavigateTo("/orderitems", replace: true);
+        return Task.CompletedTask;
+    }
+}
+
+@* @page "/orderitems/create"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
@@ -102,4 +116,4 @@ else
         await context.SaveChangesAsync();
         NavigationManager.NavigateTo("/orderitems");
     }
-}
+} *@

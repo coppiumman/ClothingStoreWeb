@@ -6,33 +6,68 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Просмотр</PageTitle>
+<PageTitle>Просмотр запаса</PageTitle>
 
-<h1>Просмотр</h1>
+<div class="stock-details-page">
+    <div class="stock-details-header">
+        <h1>Просмотр запаса</h1>
+        <p>
+            На странице отображается выбранная складская запись: товар, размер,
+            количество на складе и текущий статус наличия.
+        </p>
+    </div>
 
-<div>
-    <h2>Запас</h2>
-    <hr />
     @if (stock is null)
     {
         <p><em>Загрузка...</em></p>
     }
-    else {
-        <dl class="row">
-            <dt class="col-sm-2">Товар</dt>
-            <dd class="col-sm-10">@stock.Product?.Product_Name</dd>
-            <dt class="col-sm-2">Размер</dt>
-            <dd class="col-sm-10">@stock.Size?.Size_Name</dd>
-            <dt class="col-sm-2">Количество на складе</dt>
-            <dd class="col-sm-10">@stock.Stock_Quantity</dd>
-        </dl>
-        <div>
+    else
+    {
+        <div class="stock-details-card">
+            <div class="stock-details-row">
+                <span>Товар</span>
+                <strong>@stock.Product?.Product_Name</strong>
+            </div>
+
+            <div class="stock-details-row">
+                <span>Размер</span>
+                <strong>@stock.Size?.Size_Name</strong>
+            </div>
+
+            <div class="stock-details-row">
+                <span>Количество на складе</span>
+                <strong>@stock.Stock_Quantity</strong>
+            </div>
+
+            <div class="stock-details-row">
+                <span>Статус</span>
+                @if (stock.Stock_Quantity == 0)
+                {
+                    <strong class="stock-status stock-status-empty">Нет в наличии</strong>
+                }
+                else if (stock.Stock_Quantity <= 3)
+                {
+                    <strong class="stock-status stock-status-low">Мало</strong>
+                }
+                else
+                {
+                    <strong class="stock-status stock-status-normal">В наличии</strong>
+                }
+            </div>
+        </div>
+
+        <div class="stock-details-actions">
             @if (canEdit)
             {
-                <a href="@($"/stocks/edit?stock_id={stock.Stock_Id}&category_id={Category_Id}")">Изменить</a>
-                <span> | </span>
+                <a class="stock-button stock-button-primary"
+                   href="@($"/stocks/edit?stock_id={stock.Stock_Id}&category_id={Category_Id}")">
+                    Изменить
+                </a>
             }
-            <a href="@BackUrl">Вернуться к списку</a>
+
+            <a class="stock-button" href="@BackUrl">
+                Вернуться к списку
+            </a>
         </div>
     }
 </div>
@@ -44,6 +79,13 @@
     [SupplyParameterFromQuery]
     private int Stock_Id { get; set; }
 
+    [SupplyParameterFromQuery]
+    private int? Category_Id { get; set; }
+
+    private string BackUrl => Category_Id is null or 0
+        ? "/stocks"
+        : $"/stocks?category_id={Category_Id}";
+
     protected override async Task OnInitializedAsync()
     {
         if (!await AccessService.CanViewAsync("Stocks"))
@@ -54,22 +96,17 @@
 
         canEdit = await AccessService.CanEditAsync("Stocks");
 
-        using var context = DbFactory.CreateDbContext();
+        await using var context = await DbFactory.CreateDbContextAsync();
+
         stock = await context.Stocks
-        .Include(s => s.Product)
-        .Include(s => s.Size)
-        .FirstOrDefaultAsync(m => m.Stock_Id == Stock_Id);
+            .Include(stock => stock.Product)
+            .Include(stock => stock.Size)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(stock => stock.Stock_Id == Stock_Id);
 
         if (stock is null)
         {
             NavigationManager.NavigateTo("notfound");
         }
     }
-
-    [SupplyParameterFromQuery]
-    private int? Category_Id { get; set; }
-
-    private string BackUrl => Category_Id is null or 0
-        ? "/stocks"
-        : $"/stocks?category_id={Category_Id}";
 }

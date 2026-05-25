@@ -6,64 +6,135 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Просмотр</PageTitle>
+<PageTitle>Просмотр товара</PageTitle>
 
-<h1>Просмотр</h1>
-
-<div>
-    <h2>Товар</h2>
-    <hr />
+<div class="product-details-page">
+    <div class="product-details-header">
+        <div>
+            <h1>Просмотр товара</h1>
+            <p>
+                На странице отображаются основные данные товара, его статус и изображение.
+            </p>
+        </div>
+    </div>
 
     @if (product is null)
     {
-        <p><em>Загрузка...</em></p>
+        <div class="product-details-card">
+            <p><em>Загрузка...</em></p>
+        </div>
     }
     else
     {
-        <dl class="row">
-            <dt class="col-sm-2">Категория</dt>
-            <dd class="col-sm-10">@product.Category?.Category_Name</dd>
+        <div class="product-details-card">
+            <div class="product-details-grid">
+                <div class="product-details-info">
+                    <div class="product-details-row">
+                        <span>Категория</span>
+                        <strong>@product.Category?.Category_Name</strong>
+                    </div>
 
-            <dt class="col-sm-2">Название товара</dt>
-            <dd class="col-sm-10">@product.Product_Name</dd>
+                    <div class="product-details-row">
+                        <span>Название товара</span>
+                        <strong>@product.Product_Name</strong>
+                    </div>
 
-            <dt class="col-sm-2">Описание товара</dt>
-            <dd class="col-sm-10">@product.Product_Description</dd>
+                    <div class="product-details-row">
+                        <span>Описание товара</span>
+                        <strong>
+                            @(string.IsNullOrWhiteSpace(product.Product_Description)
+                                                    ? "Описание не указано"
+                                                    : product.Product_Description)
+                                                                              </strong>
+                                                                          </div>
 
-            <dt class="col-sm-2">Цена</dt>
-            <dd class="col-sm-10">@product.Product_Price.ToString("N2") ₽</dd>
+                    <div class="product-details-row">
+                        <span>Цена</span>
+                        <strong>@product.Product_Price.ToString("N2") ₽</strong>
+                    </div>
 
-            <dt class="col-sm-2">Цвет</dt>
-            <dd class="col-sm-10">@product.Product_Coloring</dd>
+                    <div class="product-details-row">
+                        <span>Цвет</span>
+                        <strong>
+                            @(string.IsNullOrWhiteSpace(product.Product_Coloring)
+                                                    ? "Цвет не указан"
+                                                    : product.Product_Coloring)
+                    </strong>
+                </div>
 
-            <dt class="col-sm-2">Статус</dt>
-            <dd class="col-sm-10">
-                @(product.Product_IsHidden ? "Скрыт из каталога" : "Отображается в каталоге")
-            </dd>
+                    <div class="product-details-row">
+                        <span>Статус</span>
+                    @if (product.Product_IsHidden)
+                        {
+                            <strong class="product-status product-status-hidden">Скрыт</strong>
+                        }
+                        else
+                        {
+                            <strong class="product-status product-status-visible">Отображается</strong>
+                        }
+                    </div>
+                </div>
 
-            <dt class="col-sm-2">Изображение</dt>
-            <dd class="col-sm-10">
-                @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+                <div class="product-details-images-grid">
+                    <div class="product-details-image">
+                        @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+                        {
+                            <img src="@product.Product_ImagePath" alt="@product.Product_Name" />
+                        }
+                        else
+                        {
+                            <span>Нет изображения</span>
+                        }
+                    </div>
+
+                    <div class="product-details-image">
+                        @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath2))
+                        {
+                            <img src="@product.Product_ImagePath2" alt="@product.Product_Name" />
+                        }
+                        else
+                        {
+                            <span>Нет изображения</span>
+                        }
+                    </div>
+
+                    <div class="product-details-image">
+                        @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath3))
+                        {
+                            <img src="@product.Product_ImagePath3" alt="@product.Product_Name" />
+                        }
+                        else
+                        {
+                            <span>Нет изображения</span>
+                        }
+                    </div>
+
+                    <div class="product-details-image">
+                        @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath4))
+                        {
+                            <img src="@product.Product_ImagePath4" alt="@product.Product_Name" />
+                        }
+                        else
+                        {
+                            <span>Нет изображения</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-form-actions">
+                @if (canEdit)
                 {
-                    <img src="@product.Product_ImagePath"
-                         alt="@product.Product_Name"
-                         class="product-service-image" />
+                    <a class="product-submit-button product-submit-link"
+                       href="@($"/products/edit?product_id={product.Product_Id}")">
+                        Изменить
+                    </a>
                 }
-                else
-                {
-                    <span class="text-muted">Изображение не загружено</span>
-                }
-            </dd>
-        </dl>
 
-        <div>
-            @if (canEdit)
-            {
-                <a href="@($"/products/edit?product_id={product.Product_Id}")">Изменить</a>
-                <span> | </span>
-            }
-
-            <a href="/products">Вернуться к списку</a>
+                <a class="product-secondary-button" href="/products">
+                    Вернуться к списку
+                </a>
+            </div>
         </div>
     }
 </div>

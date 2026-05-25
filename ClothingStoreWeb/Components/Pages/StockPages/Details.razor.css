@@ -1,0 +1,127 @@
+.stock-details-page {
+    max-width: 900px;
+}
+
+.stock-details-header {
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+    .stock-details-header h1 {
+        margin: 0 0 8px;
+        font-size: 34px;
+        font-weight: 400;
+    }
+
+    .stock-details-header p {
+        max-width: 760px;
+        margin: 0;
+        color: #666666;
+        line-height: 1.5;
+    }
+
+.stock-details-card {
+    max-width: 720px;
+    border: 1px solid #e4e4e4;
+    background: #ffffff;
+    margin-bottom: 18px;
+}
+
+.stock-details-row {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 18px;
+    padding: 16px 18px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+    .stock-details-row:last-child {
+        border-bottom: none;
+    }
+
+    .stock-details-row span {
+        color: #666666;
+    }
+
+    .stock-details-row strong {
+        font-weight: 500;
+    }
+
+.stock-details-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.stock-button {
+    min-height: 38px;
+    padding: 9px 18px;
+    border: 1px solid #d7d7d7;
+    background: #ffffff;
+    color: #1f1f1f;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .stock-button:hover {
+        background: #f5f5f5;
+        color: #1f1f1f;
+        text-decoration: none;
+    }
+
+.stock-button-primary {
+    background: #171717;
+    border-color: #171717;
+    color: #ffffff;
+}
+
+    .stock-button-primary:hover {
+        background: #2a2a2a;
+        color: #ffffff;
+    }
+
+.stock-status {
+    width: fit-content;
+    min-width: 110px;
+    padding: 5px 10px;
+    display: inline-flex;
+    justify-content: center;
+    border: 1px solid transparent;
+    font-size: 13px;
+}
+
+.stock-status-normal {
+    background: #edf8f0;
+    border-color: #cce8d4;
+    color: #245f32;
+}
+
+.stock-status-low {
+    background: #fff8df;
+    border-color: #ead69b;
+    color: #6f5200;
+}
+
+.stock-status-empty {
+    background: #fff3f3;
+    border-color: #f0c2c2;
+    color: #a22626;
+}
+
+@media (max-width: 640.98px) {
+    .stock-details-header h1 {
+        font-size: 28px;
+    }
+
+    .stock-details-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .stock-button {
+        width: 100%;
+    }
+}

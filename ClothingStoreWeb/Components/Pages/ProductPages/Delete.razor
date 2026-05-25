@@ -6,67 +6,114 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Удаление</PageTitle>
+<PageTitle>Удаление товара</PageTitle>
 
-<h1>Удаление</h1>
+<div class="product-details-page">
+    <div class="product-details-header">
+        <div>
+            <h1>Удаление товара</h1>
+            <p>
+                Перед удалением проверьте выбранный товар. Если товар используется в заказах
+                или складских записях, приложение не позволит удалить его из базы данных.
+            </p>
+        </div>
+    </div>
 
-<p>Вы уверены, что хотите удалить этот элемент?</p>
-<div>
-    <h2>Товар</h2>
-    <hr />
     @if (product is null)
     {
-        <p><em>Загрузка...</em></p>
+        <div class="product-details-card">
+            <p><em>Загрузка...</em></p>
+        </div>
     }
     else
     {
-        <dl class="row">
-            <dt class="col-sm-2">Категория</dt>
-            <dd class="col-sm-10">@product.Category?.Category_Name</dd>
-
-            <dt class="col-sm-2">Название товара</dt>
-            <dd class="col-sm-10">@product.Product_Name</dd>
-
-            <dt class="col-sm-2">Описание товара</dt>
-            <dd class="col-sm-10">@product.Product_Description</dd>
-
-            <dt class="col-sm-2">Цена</dt>
-            <dd class="col-sm-10">@product.Product_Price.ToString("N2") ₽</dd>
-
-            <dt class="col-sm-2">Цвет</dt>
-            <dd class="col-sm-10">@product.Product_Coloring</dd>
-
-            <dt class="col-sm-2">Статус</dt>
-            <dd class="col-sm-10">
-                @(product.Product_IsHidden ? "Скрыт из каталога" : "Отображается в каталоге")
-            </dd>
-
-            <dt class="col-sm-2">Изображение</dt>
-            <dd class="col-sm-10">
-                @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
-                {
-                    <img src="@product.Product_ImagePath"
-                         alt="@product.Product_Name"
-                         class="product-service-image" />
-                }
-                else
-                {
-                    <span class="text-muted">Изображение не загружено</span>
-                }
-            </dd>
-        </dl>
-
-        @if (!string.IsNullOrWhiteSpace(deleteError))
-        {
-            <div class="alert alert-danger">
-                @deleteError
+        <div class="product-details-card">
+            <div class="product-delete-warning">
+                Вы действительно хотите удалить этот товар?
             </div>
-        }
 
-        <EditForm method="post" Model="product" OnValidSubmit="DeleteProduct" FormName="delete" Enhance>
-            <button type="submit" class="btn btn-danger" disabled="@(product is null)">Удалить</button> |
-            <a href="/products">Вернуться к списку</a>
-        </EditForm>
+            <div class="product-details-grid">
+                <div class="product-details-info">
+                    <div class="product-details-row">
+                        <span>Категория</span>
+                        <strong>@product.Category?.Category_Name</strong>
+                    </div>
+
+                    <div class="product-details-row">
+                        <span>Название товара</span>
+                        <strong>@product.Product_Name</strong>
+                    </div>
+
+                    <div class="product-details-row">
+                        <span>Описание товара</span>
+                        <strong>
+                            @(string.IsNullOrWhiteSpace(product.Product_Description)
+                                                    ? "Описание не указано"
+                                                    : product.Product_Description)
+                                                                              </strong>
+                                                                          </div>
+
+                    <div class="product-details-row">
+                        <span>Цена</span>
+                        <strong>@product.Product_Price.ToString("N2") ₽</strong>
+                    </div>
+
+                    <div class="product-details-row">
+                        <span>Цвет</span>
+                        <strong>
+                            @(string.IsNullOrWhiteSpace(product.Product_Coloring)
+                                                    ? "Цвет не указан"
+                                                    : product.Product_Coloring)
+                    </strong>
+                </div>
+
+                    <div class="product-details-row">
+                        <span>Статус</span>
+                    @if (product.Product_IsHidden)
+                        {
+                            <strong class="product-status product-status-hidden">Скрыт</strong>
+                        }
+                        else
+                        {
+                            <strong class="product-status product-status-visible">Отображается</strong>
+                        }
+                    </div>
+                </div>
+
+                <div class="product-details-image">
+                    @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+                    {
+                        <img src="@product.Product_ImagePath"
+                             alt="@product.Product_Name" />
+                    }
+                    else
+                    {
+                        <span>Изображение не загружено</span>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(deleteError))
+            {
+                <div class="product-delete-error">
+                    @deleteError
+                </div>
+            }
+
+            <EditForm method="post" Model="product" OnValidSubmit="DeleteProduct" FormName="delete" Enhance>
+                <div class="product-form-actions">
+                    <button type="submit"
+                            class="product-delete-button"
+                            disabled="@(product is null)">
+                        Удалить товар
+                    </button>
+
+                    <a class="product-secondary-button" href="/products">
+                        Отмена
+                    </a>
+                </div>
+            </EditForm>
+        </div>
     }
 </div>
 

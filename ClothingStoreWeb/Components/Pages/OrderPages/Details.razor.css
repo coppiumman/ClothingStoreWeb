@@ -1,0 +1,220 @@
+.order-details-page {
+    max-width: 1200px;
+}
+
+.order-details-header {
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+    .order-details-header h1 {
+        margin: 0 0 8px;
+        font-size: 34px;
+        font-weight: 400;
+    }
+
+    .order-details-header p {
+        max-width: 760px;
+        margin: 0;
+        color: #666666;
+        line-height: 1.5;
+    }
+
+.order-details-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+    .order-details-summary div,
+    .order-details-card {
+        border: 1px solid #e4e4e4;
+        background: #ffffff;
+    }
+
+    .order-details-summary div {
+        padding: 16px 18px;
+    }
+
+    .order-details-summary span {
+        display: block;
+        margin-bottom: 6px;
+        color: #666666;
+        font-size: 14px;
+    }
+
+    .order-details-summary strong {
+        font-size: 18px;
+        font-weight: 500;
+    }
+
+.order-details-card {
+    max-width: 980px;
+    margin-bottom: 18px;
+}
+
+    .order-details-card h2 {
+        margin: 0;
+        padding: 16px 18px;
+        font-size: 22px;
+        font-weight: 400;
+        border-bottom: 1px solid #eeeeee;
+    }
+
+.order-details-row {
+    display: grid;
+    grid-template-columns: 230px 1fr;
+    gap: 18px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+    .order-details-row:last-child {
+        border-bottom: none;
+    }
+
+    .order-details-row span {
+        color: #666666;
+    }
+
+    .order-details-row strong {
+        font-weight: 500;
+        white-space: pre-line;
+    }
+
+.order-details-empty {
+    padding: 18px;
+    color: #666666;
+}
+
+.order-items-table-wrap {
+    max-height: 360px;
+    overflow: auto;
+}
+
+.order-items-table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+}
+
+    .order-items-table th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f7f7f7;
+        padding: 12px 16px;
+        border-bottom: 1px solid #e4e4e4;
+        font-weight: 600;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .order-items-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #eeeeee;
+    }
+
+.order-details-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+}
+
+.order-button {
+    min-height: 38px;
+    padding: 9px 18px;
+    border: 1px solid #d7d7d7;
+    background: #ffffff;
+    color: #1f1f1f;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .order-button:hover {
+        background: #f5f5f5;
+        color: #1f1f1f;
+        text-decoration: none;
+    }
+
+.order-button-primary {
+    background: #ffffff;
+    border-color: #d7d7d7;
+    color: #1f1f1f;
+}
+
+    .order-button-primary:hover {
+        background: #f5f5f5;
+        border-color: #cfcfcf;
+        color: #1f1f1f;
+    }
+
+.order-status {
+    width: fit-content;
+    min-width: 130px;
+    padding: 5px 10px;
+    display: inline-flex;
+    justify-content: center;
+    border: 1px solid transparent;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.order-status-new {
+    background: #eef5ff;
+    border-color: #cfe0f7;
+    color: #234d7d;
+}
+
+.order-status-confirmed,
+.order-status-paid,
+.order-status-processing {
+    background: #fff8df;
+    border-color: #ead69b;
+    color: #6f5200;
+}
+
+.order-status-shipped,
+.order-status-delivered,
+.order-status-done {
+    background: #edf8f0;
+    border-color: #cce8d4;
+    color: #245f32;
+}
+
+.order-status-cancelled,
+.order-status-returned {
+    background: #fff3f3;
+    border-color: #f0c2c2;
+    color: #a22626;
+}
+
+.order-status-default {
+    background: #f5f5f5;
+    border-color: #dddddd;
+    color: #555555;
+}
+
+@media (max-width: 640.98px) {
+    .order-details-header h1 {
+        font-size: 28px;
+    }
+
+    .order-details-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .order-details-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .order-button {
+        width: 100%;
+    }
+}

@@ -1,0 +1,293 @@
+@page "/homebanners/delete"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@using ClothingStoreWeb.Data
+@using ClothingStoreWeb.Models
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Удаление блока главной</PageTitle>
+
+<div class="homebanner-delete-page">
+    <div class="homebanner-delete-header">
+        <h1>Удаление блока главной</h1>
+        <p>
+            Перед удалением проверьте выбранный блок. После удаления он больше не будет
+            использоваться на главной странице интернет-магазина.
+        </p>
+    </div>
+
+    @if (!canDeleteHomeBanners)
+    {
+        <p><em>Проверка доступа...</em></p>
+    }
+    else if (homeBanner is null)
+    {
+        <p><em>Загрузка данных...</em></p>
+    }
+    else
+    {
+        <div class="homebanner-delete-card">
+            <div class="homebanner-delete-warning">
+                Вы действительно хотите удалить этот блок главной страницы?
+            </div>
+
+            <div class="homebanner-delete-grid">
+                <div class="homebanner-delete-info">
+                    <div class="homebanner-delete-row">
+                        <div class="homebanner-delete-label">Тип блока</div>
+                        <div class="homebanner-delete-value">
+                            @GetBannerTypeName(homeBanner.HomeBanner_Type)
+                        </div>
+                    </div>
+
+                    <div class="homebanner-delete-row">
+                        <div class="homebanner-delete-label">Подпись</div>
+                        <div class="homebanner-delete-value">
+                            @DisplayValue(homeBanner.HomeBanner_Label)
+                        </div>
+                    </div>
+
+                    <div class="homebanner-delete-row">
+                        <div class="homebanner-delete-label">Заголовок</div>
+                        <div class="homebanner-delete-value">
+                            @homeBanner.HomeBanner_Title
+                        </div>
+                    </div>
+
+                    <div class="homebanner-delete-row homebanner-delete-row-large">
+                        <div class="homebanner-delete-label">Описание</div>
+                        <div class="homebanner-delete-value homebanner-description-box">
+                            @DisplayValue(homeBanner.HomeBanner_Description)
+                        </div>
+                    </div>
+
+                    <div class="homebanner-delete-row">
+                        <div class="homebanner-delete-label">Текст кнопки</div>
+                        <div class="homebanner-delete-value">
+                            @DisplayValue(homeBanner.HomeBanner_ButtonText)
+                        </div>
+                    </div>
+
+                    <div class="homebanner-delete-row">
+                        <div class="homebanner-delete-label">Ссылка кнопки</div>
+                        <div class="homebanner-delete-value">
+                            @GetLinkDisplayName(homeBanner.HomeBanner_ButtonUrl)
+                        </div>
+                    </div>
+
+                    <div class="homebanner-delete-row">
+                        <div class="homebanner-delete-label">Порядок отображения</div>
+                        <div class="homebanner-delete-value">
+                            @homeBanner.HomeBanner_DisplayOrder
+                        </div>
+                    </div>
+
+                    <div class="homebanner-delete-row">
+                        <div class="homebanner-delete-label">Статус</div>
+                        <div class="homebanner-delete-value">
+                            @if (homeBanner.HomeBanner_IsHidden)
+                            {
+                                <span class="homebanner-status homebanner-status-hidden">
+                                    Скрыт
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="homebanner-status homebanner-status-visible">
+                                    Отображается
+                                </span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="homebanner-delete-image">
+                    <h2>Изображение блока</h2>
+
+                    <div class="homebanner-image-box">
+                        @if (!string.IsNullOrWhiteSpace(homeBanner.HomeBanner_ImagePath))
+                        {
+                            <img src="@homeBanner.HomeBanner_ImagePath" alt="@homeBanner.HomeBanner_Title" />
+                        }
+                        else
+                        {
+                            <span>Изображение не выбрано</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @if (!confirmDelete)
+            {
+                <div class="homebanner-delete-actions">
+                    <button type="button"
+                            class="homebanner-button homebanner-button-danger"
+                            @onclick="ShowDeleteConfirmation">
+                        Удалить блок
+                    </button>
+
+                    <a class="homebanner-button" href="/homebanners">
+                        Отмена
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="homebanner-delete-confirm">
+                    <div class="homebanner-delete-confirm-text">
+                        Подтвердите удаление. Данные блока будут удалены из базы данных.
+                    </div>
+
+                    <div class="homebanner-delete-actions">
+                        <button type="button"
+                                class="homebanner-button homebanner-button-danger"
+                                @onclick="DeleteHomeBanner">
+                            Подтвердить удаление
+                        </button>
+
+                        <button type="button"
+                                class="homebanner-button"
+                                @onclick="CancelDeleteConfirmation">
+                            Не удалять
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int HomeBanner_Id { get; set; }
+
+    private bool canDeleteHomeBanners;
+    private bool confirmDelete;
+    private HomeBanner? homeBanner;
+    private string? productLinkName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        canDeleteHomeBanners = await AccessService.CanDeleteAsync("HomeBanners");
+
+        if (!canDeleteHomeBanners)
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        homeBanner = await context.HomeBanners
+            .AsNoTracking()
+            .FirstOrDefaultAsync(banner => banner.HomeBanner_Id == HomeBanner_Id);
+
+        if (homeBanner is null)
+        {
+            NavigationManager.NavigateTo("/not-found");
+            return;
+        }
+
+        if (TryGetProductIdFromUrl(homeBanner.HomeBanner_ButtonUrl, out var productId))
+        {
+            productLinkName = await context.Products
+                .AsNoTracking()
+                .Where(product => product.Product_Id == productId)
+                .Select(product => product.Product_Name)
+                .FirstOrDefaultAsync();
+        }
+    }
+
+    private void ShowDeleteConfirmation()
+    {
+        confirmDelete = true;
+    }
+
+    private void CancelDeleteConfirmation()
+    {
+        confirmDelete = false;
+    }
+
+    private async Task DeleteHomeBanner()
+    {
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var bannerToDelete = await context.HomeBanners
+            .FirstOrDefaultAsync(banner => banner.HomeBanner_Id == HomeBanner_Id);
+
+        if (bannerToDelete is null)
+        {
+            NavigationManager.NavigateTo("/not-found");
+            return;
+        }
+
+        context.HomeBanners.Remove(bannerToDelete);
+        await context.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/homebanners");
+    }
+
+    private static string GetBannerTypeName(string? type)
+    {
+        return type switch
+        {
+            "Hero" => "Главный баннер",
+            "NewProducts" => "Блок новинок",
+            "Poster" => "Промо-блок",
+            "HitProducts" => "Блок хитов",
+            _ => "Блок главной"
+        };
+    }
+
+    private string GetLinkDisplayName(string? url)
+    {
+        if (TryGetProductIdFromUrl(url, out var productId))
+        {
+            return !string.IsNullOrWhiteSpace(productLinkName)
+                ? $"Товар: {productLinkName}"
+                : $"Товар №{productId}";
+        }
+
+        return url switch
+        {
+            "/catalog" => "Каталог",
+            "/store" => "Главная страница",
+            "/cart" => "Корзина",
+            "/profile" => "Личный кабинет",
+            "/delivery" => "Доставка",
+            "/payment" => "Оплата",
+            "/returns" => "Возврат",
+            "/help" => "Помощь",
+            null or "" => "Не указано",
+            _ => url
+        };
+    }
+
+    private static bool TryGetProductIdFromUrl(string? url, out int productId)
+    {
+        productId = 0;
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        const string productUrlPrefix = "/catalog/product/";
+
+        if (!url.StartsWith(productUrlPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var idText = url[productUrlPrefix.Length..];
+
+        return int.TryParse(idText, out productId);
+    }
+
+    private static string DisplayValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "Не указано" : value;
+    }
+}

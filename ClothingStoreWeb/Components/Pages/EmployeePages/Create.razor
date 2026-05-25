@@ -8,107 +8,140 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager NavigationManager
 
-<PageTitle>Добавление</PageTitle>
+<PageTitle>Добавление сотрудника</PageTitle>
 
-<h1>Добавление</h1>
+<div class="employee-form-page">
+    <div class="employee-form-header">
+        <h1>Добавление сотрудника</h1>
+        <p>
+            Выберите зарегистрированного пользователя, укажите должность, зарплату и дату приёма.
+            После добавления пользователь получит роль сотрудника и сможет работать со служебным разделом.
+        </p>
+    </div>
 
-<h2>Сотрудник</h2>
-<hr />
-@if (Employee is null)
-{
-    <p><em>Загрузка...</em></p>
-}
-else
-{
-    <div class="row">
-        <div class="col-md-4">
+    @if (Employee is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <div class="employee-form-card">
             <EditForm method="post" Model="Employee" OnValidSubmit="AddEmployee" FormName="create" Enhance>
                 <DataAnnotationsValidator />
-                <ValidationSummary class="text-danger" role="alert"/>
-                <div class="mb-3">
-                    <label for="user_search" class="form-label">Поиск пользователя:</label>
+                <ValidationSummary class="text-danger" role="alert" />
+
+                <div class="employee-form-group">
+                    <label for="user_search">Поиск пользователя</label>
+
                     <input id="user_search"
                            @bind="userSearchText"
                            @bind:event="oninput"
-                           class="form-control"
+                           class="employee-form-control"
                            placeholder="Введите ФИО или email" />
+
+                    <div class="employee-form-note">
+                        В поиске отображаются только пользователи, которые ещё не добавлены как сотрудники.
+                    </div>
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(userSearchText))
                 {
-                    <div class="mb-3">
-                        <label class="form-label">Найденные пользователи:</label>
+                    <div class="employee-form-group">
+                        <label>Найденные пользователи</label>
 
                         @if (FilteredUsers.Any())
                         {
-                            <div class="list-group user-search-results">
+                            <div class="employee-user-results">
                                 @foreach (var user in FilteredUsers)
                                 {
                                     <button type="button"
-                                            class="list-group-item list-group-item-action"
+                                            class="employee-user-result"
                                             @onclick="() => SelectUser(user)">
-                                        @GetUserDisplayName(user)
+                                        <strong>@GetUserDisplayName(user)</strong>
+                                        <span>@(user.Email ?? "Email не указан")</span>
                                     </button>
                                 }
                             </div>
                         }
                         else
                         {
-                            <div class="text-muted">
+                            <div class="employee-empty-message">
                                 Пользователи не найдены.
                             </div>
                         }
                     </div>
                 }
 
-                <div class="mb-3">
-                    <label class="form-label">Выбранный пользователь:</label>
-                    <input class="form-control"
+                <div class="employee-form-group">
+                    <label>Выбранный пользователь <span>*</span></label>
+
+                    <input class="employee-form-control employee-user-readonly"
                            value="@GetSelectedUserName()"
                            readonly />
 
                     <ValidationMessage For="() => Employee.User_Id" class="text-danger" />
                 </div>
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="employee_position" class="form-label">Должность:</label> 
-                    <InputSelect id="employee_position" @bind-Value="Employee.Employee_Position" class="form-control" aria-required="true">
+
+                <div class="employee-form-group">
+                    <label for="employee_position">Должность <span>*</span></label>
+
+                    <InputSelect id="employee_position"
+                                 @bind-Value="Employee.Employee_Position"
+                                 class="employee-form-control"
+                                 aria-required="true">
                         <option value="">Выберите должность</option>
                         @foreach (var position in EmployeePositions)
                         {
                             <option value="@position">@position</option>
                         }
                     </InputSelect>
-                    <ValidationMessage For="() => Employee.Employee_Position" class="text-danger" /> 
-                </div>        
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="employee_salary" class="form-label">Зарплата:</label> 
-                    <InputNumber id="employee_salary" @bind-Value="Employee.Employee_Salary" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную зарплату"/> 
-                    <ValidationMessage For="() => Employee.Employee_Salary" class="text-danger" /> 
-                </div>        
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="employee_hiredate" class="form-label">Дата приёма на работу:</label> 
-                    <InputDate id="employee_hiredate" @bind-Value="Employee.Employee_HireDate" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную дату приёма на работу"/> 
-                    <ValidationMessage For="() => Employee.Employee_HireDate" class="text-danger" /> 
+
+                    <ValidationMessage For="() => Employee.Employee_Position" class="text-danger" />
+                </div>
+
+                <div class="employee-form-group">
+                    <label for="employee_salary">Зарплата <span>*</span></label>
+
+                    <InputNumber id="employee_salary"
+                                 @bind-Value="Employee.Employee_Salary"
+                                 class="employee-form-control"
+                                 aria-required="true"
+                                 ParsingErrorMessage="Введите корректную зарплату" />
+
+                    <ValidationMessage For="() => Employee.Employee_Salary" class="text-danger" />
+                </div>
+
+                <div class="employee-form-group">
+                    <label for="employee_hiredate">Дата приёма на работу <span>*</span></label>
+
+                    <InputDate id="employee_hiredate"
+                               @bind-Value="Employee.Employee_HireDate"
+                               class="employee-form-control"
+                               aria-required="true"
+                               ParsingErrorMessage="Введите корректную дату приёма на работу" />
+
+                    <ValidationMessage For="() => Employee.Employee_HireDate" class="text-danger" />
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(createError))
                 {
-                    <div class="alert alert-danger">
+                    <div class="employee-form-alert">
                         @createError
                     </div>
                 }
 
-                <button type="submit" class="btn btn-primary">Добавить</button>
+                <div class="employee-form-actions">
+                    <button type="submit" class="employee-button employee-button-primary">
+                        Добавить сотрудника
+                    </button>
+
+                    <a class="employee-button" href="/employees">
+                        Отмена
+                    </a>
+                </div>
             </EditForm>
         </div>
-    </div>
-}
-
-<div>
-    <a href="/employees">Вернуться к списку</a>
+    }
 </div>
 
 @code {
@@ -116,9 +149,19 @@ else
     private Employee Employee { get; set; } = default!;
 
     private List<ApplicationUser> Users { get; set; } = new();
-    
+
     private string userSearchText = string.Empty;
     private string? createError;
+
+    private const string EmployeeRoleName = "Сотрудник";
+    private const string AdministratorRoleName = "Администратор";
+
+    private static readonly string[] EmployeePositions =
+    {
+        "Менеджер",
+        "Кладовщик",
+        "Консультант"
+    };
 
     private IEnumerable<ApplicationUser> FilteredUsers
     {
@@ -139,16 +182,6 @@ else
         }
     }
 
-    private const string EmployeeRoleName = "Сотрудник";
-
-    private static readonly string[] EmployeePositions =
-    {
-        "Администратор",
-        "Менеджер",
-        "Кладовщик",
-        "Консультант"
-    };
-
     protected override async Task OnInitializedAsync()
     {
         Employee ??= new();
@@ -160,9 +193,16 @@ else
             .Select(employee => employee.User_Id)
             .ToListAsync();
 
+        var administratorUsers = await UserManager.GetUsersInRoleAsync(AdministratorRoleName);
+        var administratorUserIds = administratorUsers
+            .Select(user => user.Id)
+            .ToList();
+
         Users = await context.Users
             .AsNoTracking()
-            .Where(user => !employeeUserIds.Contains(user.Id))
+            .Where(user =>
+                !employeeUserIds.Contains(user.Id) &&
+                !administratorUserIds.Contains(user.Id))
             .OrderBy(user => user.UserFullName)
             .ThenBy(user => user.Email)
             .ToListAsync();
@@ -171,13 +211,19 @@ else
     private static string GetUserDisplayName(ApplicationUser? user)
     {
         if (user is null)
+        {
             return "";
+        }
 
         if (!string.IsNullOrWhiteSpace(user.UserFullName))
+        {
             return user.UserFullName;
+        }
 
         if (!string.IsNullOrWhiteSpace(user.Email))
+        {
             return user.Email;
+        }
 
         return user.Id;
     }
@@ -204,6 +250,15 @@ else
             return;
         }
 
+        var selectedUser = await UserManager.FindByIdAsync(Employee.User_Id);
+
+        if (selectedUser is not null &&
+            await UserManager.IsInRoleAsync(selectedUser, AdministratorRoleName))
+        {
+            createError = "Пользователя с ролью администратора нельзя добавлять как сотрудника.";
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
 
         var employeeAlreadyExists = await context.Employees
@@ -218,10 +273,10 @@ else
         context.Employees.Add(Employee);
         await context.SaveChangesAsync();
 
-        var user = await UserManager.FindByIdAsync(Employee.User_Id);
-        if (user is not null && !await UserManager.IsInRoleAsync(user, EmployeeRoleName))
+        if (selectedUser is not null &&
+            !await UserManager.IsInRoleAsync(selectedUser, EmployeeRoleName))
         {
-            await UserManager.AddToRoleAsync(user, EmployeeRoleName);
+            await UserManager.AddToRoleAsync(selectedUser, EmployeeRoleName);
         }
 
         NavigationManager.NavigateTo("/employees");

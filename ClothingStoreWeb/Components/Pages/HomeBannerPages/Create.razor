@@ -1,0 +1,529 @@
+@page "/homebanners/create"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@using ClothingStoreWeb.Data
+@using ClothingStoreWeb.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Environment
+
+<PageTitle>Добавление баннера</PageTitle>
+
+<div class="homebanner-form-page">
+    <div class="homebanner-form-header">
+        <h1>Добавление баннера</h1>
+        <p>
+            Заполните данные баннера главной страницы. Баннер может быть главным слайдом
+            или отдельным промо-блоком.
+        </p>
+    </div>
+
+    @if (!canManageHomeBanners)
+    {
+        <p><em>Проверка доступа...</em></p>
+    }
+    else
+    {
+        <EditForm Model="homeBanner" OnValidSubmit="CreateHomeBanner" class="homebanner-form-card">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            @if (!string.IsNullOrWhiteSpace(formError))
+            {
+                <div class="homebanner-form-error">
+                    @formError
+                </div>
+            }
+
+            <div class="homebanner-form-grid">
+                <div class="homebanner-form-main">
+                    <div class="homebanner-form-group">
+                        <label for="banner-type">Тип блока <span>*</span></label>
+
+                        <div class="homebanner-select-wrap">
+                            <InputSelect id="banner-type"
+                                         class="homebanner-input homebanner-select"
+                                         @bind-Value="homeBanner.HomeBanner_Type">
+                                <option value="Hero">Главный баннер</option>
+                                <option value="NewProducts">Блок новинок</option>
+                                <option value="Poster">Промо-блок</option>
+                                <option value="HitProducts">Блок хитов</option>
+                            </InputSelect>
+                        </div>
+
+                        <ValidationMessage For="() => homeBanner.HomeBanner_Type" />
+                    </div>
+
+                    <div class="homebanner-form-group">
+                        <label for="banner-label">Подпись</label>
+                        <InputText id="banner-label"
+                                   class="homebanner-input"
+                                   @bind-Value="homeBanner.HomeBanner_Label"
+                                   maxlength="100"
+                                   placeholder="Например: Новая коллекция" />
+                        <ValidationMessage For="() => homeBanner.HomeBanner_Label" />
+                    </div>
+
+                    <div class="homebanner-form-group">
+                        <label for="banner-title">Заголовок <span>*</span></label>
+                        <InputText id="banner-title"
+                                   class="homebanner-input"
+                                   @bind-Value="homeBanner.HomeBanner_Title"
+                                   maxlength="150"
+                                   placeholder="Например: VELD" />
+                        <ValidationMessage For="() => homeBanner.HomeBanner_Title" />
+                    </div>
+
+                    <div class="homebanner-form-group">
+                        <label for="banner-description">Описание</label>
+                        <InputTextArea id="banner-description"
+                                       class="homebanner-input homebanner-textarea"
+                                       @bind-Value="homeBanner.HomeBanner_Description"
+                                       maxlength="500"
+                                       placeholder="Краткое описание баннера" />
+
+                        <div class="homebanner-field-hint">
+                            До 500 символов. При большом тексте внутри поля появится прокрутка.
+                        </div>
+
+                        <ValidationMessage For="() => homeBanner.HomeBanner_Description" />
+                    </div>
+
+                    <div class="homebanner-form-row">
+                        <div class="homebanner-form-group">
+                            <label for="banner-button-text">Текст кнопки</label>
+                            <InputText id="banner-button-text"
+                                       class="homebanner-input"
+                                       @bind-Value="homeBanner.HomeBanner_ButtonText"
+                                       maxlength="80"
+                                       placeholder="Смотреть каталог" />
+                            <ValidationMessage For="() => homeBanner.HomeBanner_ButtonText" />
+                        </div>
+
+                        <div class="homebanner-form-group">
+                            <label for="banner-link-type">Тип перехода кнопки</label>
+
+                            <div class="homebanner-select-wrap">
+                                <InputSelect id="banner-link-type"
+                                             class="homebanner-input homebanner-select"
+                                             @bind-Value="selectedLinkType">
+                                    <option value="Catalog">Каталог</option>
+                                    <option value="Product">Карточка конкретного товара</option>
+                                    <option value="Store">Главная страница</option>
+                                    <option value="Cart">Корзина</option>
+                                    <option value="Profile">Личный кабинет</option>
+                                    <option value="Delivery">Доставка</option>
+                                    <option value="Payment">Оплата</option>
+                                    <option value="Returns">Возврат</option>
+                                    <option value="Help">Помощь</option>
+                                </InputSelect>
+                            </div>
+
+                            @if (selectedLinkType == "Product")
+                            {
+                                <div class="homebanner-product-link-block">
+                                    <label for="banner-product-search">Товар для перехода</label>
+
+                                    <input id="banner-product-search"
+                                           class="homebanner-input homebanner-product-search-input"
+                                           placeholder="Введите название товара"
+                                           value="@productSearchText"
+                                           @oninput="OnProductSearchInput" />
+
+                                    @if (selectedProductId.HasValue && !string.IsNullOrWhiteSpace(selectedProductName))
+                                    {
+                                        <div class="homebanner-selected-product">
+                                            Выбранный товар: <strong>@selectedProductName</strong>
+                                        </div>
+                                    }
+
+                                    @if (FilteredProducts.Any())
+                                    {
+                                        <div class="homebanner-product-search-results">
+                                            @foreach (var product in FilteredProducts)
+                                            {
+                                                <button type="button"
+                                                        class="homebanner-product-search-item"
+                                                        @onclick="() => SelectProduct(product)">
+                                                    <span>@product.ProductName</span>
+
+                                                    <small>
+                                                        @product.CategoryName
+                                                        @if (!string.IsNullOrWhiteSpace(product.Color))
+                                                        {
+                                                            <span> · @product.Color</span>
+                                                        }
+                                                    </small>
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="homebanner-product-search-empty">
+                                            Товары не найдены.
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="homebanner-form-row">
+                        <div class="homebanner-form-group">
+                            <label for="banner-order">Порядок отображения <span>*</span></label>
+                            <InputNumber id="banner-order"
+                                         class="homebanner-input"
+                                         @bind-Value="homeBanner.HomeBanner_DisplayOrder" />
+                        </div>
+
+                        <div class="homebanner-form-group homebanner-checkbox-group">
+                            <label class="homebanner-checkbox-label">
+                                <InputCheckbox @bind-Value="homeBanner.HomeBanner_IsHidden" />
+                                <span>Скрыть баннер</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="homebanner-form-preview">
+                    @if (IsProductSection)
+                    {
+                        <h2>Изображение товара</h2>
+
+                        <div class="homebanner-field-hint">
+                            Для блоков новинок и хитов изображение берётся из выбранного товара.
+                            Отдельная загрузка изображения здесь не используется.
+                        </div>
+
+                        <div class="homebanner-preview-box">
+                            @if (!string.IsNullOrWhiteSpace(selectedProductImagePath))
+                            {
+                                <img src="@selectedProductImagePath" alt="@selectedProductName" />
+                            }
+                            else if (selectedLinkType == "Product")
+                            {
+                                <span>Выберите товар, чтобы увидеть изображение</span>
+                            }
+                            else
+                            {
+                                <span>Для заголовочной записи изображение не требуется</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <h2>Изображение баннера</h2>
+
+                        <div class="homebanner-form-group">
+                            <label for="banner-image-file">Файл изображения</label>
+
+                            <InputFile id="banner-image-file"
+                                       class="homebanner-file-input"
+                                       OnChange="LoadImagePreview"
+                                       accept="image/png,image/jpeg,image/webp" />
+
+                            <div class="homebanner-field-hint">
+                                Выберите изображение с устройства. Поддерживаются JPG, PNG и WEBP.
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(imageError))
+                            {
+                                <div class="homebanner-file-error">
+                                    @imageError
+                                </div>
+                            }
+                        </div>
+
+                        <div class="homebanner-preview-box">
+                            @if (!string.IsNullOrWhiteSpace(imagePreviewUrl))
+                            {
+                                <img src="@imagePreviewUrl" alt="@homeBanner.HomeBanner_Title" />
+                            }
+                            else
+                            {
+                                <span>Изображение не выбрано</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="homebanner-form-actions">
+                <button type="submit" class="homebanner-button homebanner-button-primary">
+                    Добавить баннер
+                </button>
+
+                <a class="homebanner-button" href="/homebanners">
+                    Отмена
+                </a>
+            </div>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private const long MaxImageSize = 5 * 1024 * 1024;
+
+    private bool canManageHomeBanners;
+    private IBrowserFile? selectedImage;
+    private string? imagePreviewUrl;
+    private string? imageError;
+    private string? formError;
+    private string selectedLinkType = "Catalog";
+    private int? selectedProductId;
+    private string productSearchText = string.Empty;
+    private string? selectedProductName;
+    private string? selectedProductImagePath;
+    private List<ProductLinkOption> products = new();
+
+    private bool IsProductSection =>
+        homeBanner.HomeBanner_Type is "NewProducts" or "HitProducts";
+
+    private HomeBanner homeBanner = new()
+    {
+        HomeBanner_Type = "Hero",
+        HomeBanner_Title = string.Empty,
+        HomeBanner_ButtonText = "Смотреть каталог",
+        HomeBanner_ButtonUrl = "/catalog",
+        HomeBanner_DisplayOrder = 1,
+        HomeBanner_IsHidden = false
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        canManageHomeBanners = await AccessService.CanCreateAsync("HomeBanners");
+
+        if (!canManageHomeBanners)
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        products = await context.Products
+            .AsNoTracking()
+            .Include(product => product.Category)
+            .Where(product => !product.Product_IsHidden)
+            .OrderBy(product => product.Product_Name)
+            .Select(product => new ProductLinkOption(
+                product.Product_Id,
+                product.Product_Name,
+                product.Category != null ? product.Category.Category_Name : "Без категории",
+                product.Product_Coloring ?? string.Empty,
+                product.Product_ImagePath))
+            .ToListAsync();
+    }
+
+    private async Task LoadImagePreview(InputFileChangeEventArgs e)
+    {
+        imageError = null;
+        selectedImage = e.File;
+
+        if (selectedImage.Size > MaxImageSize)
+        {
+            selectedImage = null;
+            imagePreviewUrl = null;
+            imageError = "Размер изображения не должен превышать 5 МБ.";
+            return;
+        }
+
+        if (!IsAllowedImageType(selectedImage.ContentType))
+        {
+            selectedImage = null;
+            imagePreviewUrl = null;
+            imageError = "Можно выбрать только изображение JPG, PNG или WEBP.";
+            return;
+        }
+
+        var buffer = new byte[selectedImage.Size];
+
+        await using var stream = selectedImage.OpenReadStream(MaxImageSize);
+        await stream.ReadExactlyAsync(buffer);
+
+        imagePreviewUrl = $"data:{selectedImage.ContentType};base64,{Convert.ToBase64String(buffer)}";
+    }
+
+    private async Task CreateHomeBanner()
+    {
+        formError = null;
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var typeLimit = GetTypeLimit(homeBanner.HomeBanner_Type);
+
+        var currentTypeCount = await context.HomeBanners
+            .CountAsync(banner => banner.HomeBanner_Type == homeBanner.HomeBanner_Type);
+
+        if (currentTypeCount >= typeLimit)
+        {
+            formError = $"Нельзя добавить больше {typeLimit} {GetTypeDisplayName(homeBanner.HomeBanner_Type)}.";
+            return;
+        }
+
+        var generatedButtonUrl = GetGeneratedButtonUrl();
+
+        if (string.IsNullOrWhiteSpace(generatedButtonUrl))
+        {
+            formError = "Выберите товар, на который должна вести кнопка.";
+            return;
+        }
+
+        homeBanner.HomeBanner_ButtonUrl = generatedButtonUrl;
+
+        if (homeBanner.HomeBanner_DisplayOrder <= 0)
+        {
+            homeBanner.HomeBanner_DisplayOrder = 1;
+        }
+
+        if (!IsProductSection && selectedImage is not null)
+        {
+            homeBanner.HomeBanner_ImagePath = await SaveImageAsync(selectedImage);
+        }
+        else if (IsProductSection)
+        {
+            homeBanner.HomeBanner_ImagePath = null;
+        }
+
+        homeBanner.HomeBanner_CreatedAt = DateTime.Now;
+        homeBanner.HomeBanner_UpdatedAt = null;
+
+        context.HomeBanners.Add(homeBanner);
+        await context.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/homebanners");
+    }
+
+    private async Task<string> SaveImageAsync(IBrowserFile image)
+    {
+        var folderPath = Path.Combine(Environment.WebRootPath, "images", "homebanners");
+
+        if (!Directory.Exists(folderPath))
+        {
+            Directory.CreateDirectory(folderPath);
+        }
+
+        var extension = Path.GetExtension(image.Name).ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = image.ContentType switch
+            {
+                "image/jpeg" => ".jpg",
+                "image/png" => ".png",
+                "image/webp" => ".webp",
+                _ => ".jpg"
+            };
+        }
+
+        var fileName = $"{Guid.NewGuid()}{extension}";
+        var filePath = Path.Combine(folderPath, fileName);
+
+        await using var fileStream = new FileStream(filePath, FileMode.Create);
+        await image.OpenReadStream(MaxImageSize).CopyToAsync(fileStream);
+
+        return $"/images/homebanners/{fileName}";
+    }
+
+    private static bool IsAllowedImageType(string contentType)
+    {
+        return contentType is "image/jpeg" or "image/png" or "image/webp";
+    }
+
+    private static int GetTypeLimit(string type)
+    {
+        return type switch
+        {
+            "Hero" => 3,
+            "NewProducts" => 4,
+            "Poster" => 1,
+            "HitProducts" => 4,
+            _ => 1
+        };
+    }
+
+    private static string GetTypeDisplayName(string type)
+    {
+        return type switch
+        {
+            "Hero" => "главных баннеров",
+            "NewProducts" => "записей блока новинок",
+            "Poster" => "промо-блоков",
+            "HitProducts" => "записей блока хитов",
+            _ => "блоков"
+        };
+    }
+    
+    private IEnumerable<ProductLinkOption> FilteredProducts
+    {
+        get
+        {
+            if (selectedLinkType != "Product")
+            {
+                return Enumerable.Empty<ProductLinkOption>();
+            }
+
+            var query = productSearchText.Trim();
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return products.Take(8);
+            }
+
+            return products
+                .Where(product =>
+                    product.ProductName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    product.CategoryName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    product.Color.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .Take(8);
+        }
+    }
+
+    private void OnProductSearchInput(ChangeEventArgs e)
+    {
+        productSearchText = e.Value?.ToString() ?? string.Empty;
+
+        if (selectedProductId.HasValue &&
+            !string.Equals(productSearchText, selectedProductName, StringComparison.OrdinalIgnoreCase))
+        {
+            selectedProductId = null;
+            selectedProductName = null;
+            selectedProductImagePath = null;
+        }
+    }
+
+    private void SelectProduct(ProductLinkOption product)
+    {
+        selectedProductId = product.ProductId;
+        selectedProductName = product.ProductName;
+        selectedProductImagePath = product.ImagePath;
+        productSearchText = product.ProductName;
+    }
+
+    private string? GetGeneratedButtonUrl()
+    {
+        return selectedLinkType switch
+        {
+            "Catalog" => "/catalog",
+            "Product" when selectedProductId.HasValue => $"/catalog/product/{selectedProductId.Value}",
+            "Store" => "/store",
+            "Cart" => "/cart",
+            "Profile" => "/profile",
+            "Delivery" => "/delivery",
+            "Payment" => "/payment",
+            "Returns" => "/returns",
+            "Help" => "/help",
+            _ => "/catalog"
+        };
+    }
+
+    private record ProductLinkOption(
+        int ProductId,
+        string ProductName,
+        string CategoryName,
+        string Color,
+        string? ImagePath);
+}

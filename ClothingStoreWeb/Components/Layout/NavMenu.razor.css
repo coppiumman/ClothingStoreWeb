@@ -2,6 +2,10 @@
     min-height: 3.5rem;
     background: #111111;
     border-bottom: 1px solid #2a2a2a;
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .navbar-brand {
@@ -24,19 +28,24 @@
 
 .navbar-toggler {
     appearance: none;
+    -webkit-appearance: none;
     cursor: pointer;
     width: 3.5rem;
     height: 2.5rem;
-    color: white;
     position: absolute;
     top: 0.5rem;
     right: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: #1f1f1f;
+    border: 1px solid #3a3a3a;
+    background-color: #171717;
+    background-image: linear-gradient(#ffffff, #ffffff), linear-gradient(#ffffff, #ffffff), linear-gradient(#ffffff, #ffffff);
+    background-repeat: no-repeat;
+    background-size: 22px 2px, 22px 2px, 22px 2px;
+    background-position: center 11px, center 18px, center 25px;
 }
 
     .navbar-toggler:checked {
-        background-color: #2b2b2b;
+        background-color: #242424;
+        border-color: #555;
     }
 
 .nav-scrollable {
@@ -144,7 +153,9 @@
     .nav-scrollable {
         display: block;
         height: calc(100vh - 3.5rem);
+        max-height: calc(100vh - 3.5rem);
         overflow-y: auto;
+        overflow-x: hidden;
     }
 
         .nav-scrollable::-webkit-scrollbar {
@@ -158,14 +169,52 @@
         .nav-scrollable::-webkit-scrollbar-thumb {
             background: #444444;
         }
+
+        .nav-scrollable::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .nav-scrollable::-webkit-scrollbar-track {
+            background: #171717;
+        }
+
+        .nav-scrollable::-webkit-scrollbar-thumb {
+            background: #444444;
+        }
+
+            .nav-scrollable::-webkit-scrollbar-thumb:hover {
+                background: #555555;
+            }
 }
 
 @media (max-width: 640.98px) {
-    .navbar-toggler:checked ~ .nav-scrollable {
+    .navbar {
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+    }
+
+    .navbar-toggler {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.75rem;
         display: block;
+    }
+
+        .navbar-toggler:checked ~ .nav-scrollable {
+            display: block;
+        }
+
+    .service-brand {
+        max-width: calc(100% - 5rem);
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .nav-scrollable {
         display: none;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
     }
 }

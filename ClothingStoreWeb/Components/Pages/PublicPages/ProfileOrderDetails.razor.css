@@ -216,12 +216,261 @@
     line-height: 1.5;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+    .order-details-page {
+        padding: 30px 32px 56px;
+    }
+
+    .order-details-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+        .order-details-summary > div:nth-child(2) {
+            border-right: none;
+        }
+
+        .order-details-summary > div:nth-child(1),
+        .order-details-summary > div:nth-child(2) {
+            border-bottom: 1px solid #e2e2e2;
+        }
+
+    .order-checkout-info {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .order-checkout-info-item {
+        border-right: 1px solid #e2e2e2;
+    }
+
+        .order-checkout-info-item:nth-child(3n) {
+            border-right: 1px solid #e2e2e2;
+        }
+
+        .order-checkout-info-item:nth-child(2n) {
+            border-right: none;
+        }
+
+    .order-checkout-info-item-wide {
+        grid-column: 1 / -1;
+        border-right: none;
+    }
+
+    .order-details-section {
+        max-width: 720px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .order-details-summary,
+    .order-checkout-info {
+        max-width: 720px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .order-items-scroll {
+        max-height: none;
+        overflow: visible;
+        border: none;
+    }
+
+    .order-items-table,
+    .order-items-table tbody,
+    .order-items-table tr,
+    .order-items-table td {
+        display: block;
+        width: 100% !important;
+    }
+
+    .order-items-table {
+        min-width: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+        .order-items-table thead {
+            display: none;
+        }
+
+        .order-items-table tr {
+            margin-bottom: 18px;
+            padding: 18px 18px;
+            border: 1px solid #e2e2e2;
+            background: #ffffff;
+        }
+
+        .order-items-table td {
+            display: grid;
+            grid-template-columns: 1fr;
+            width: 100% !important;
+            gap: 5px;
+            padding: 10px 0;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 14px;
+            text-align: left;
+        }
+
+            .order-items-table th:nth-child(1),
+            .order-items-table td:nth-child(1),
+            .order-items-table th:nth-child(2),
+            .order-items-table td:nth-child(2),
+            .order-items-table th:nth-child(3),
+            .order-items-table td:nth-child(3),
+            .order-items-table th:nth-child(4),
+            .order-items-table td:nth-child(4),
+            .order-items-table th:nth-child(5),
+            .order-items-table td:nth-child(5) {
+                width: 100% !important;
+                text-align: left;
+            }
+
+            .order-items-table td:last-child {
+                border-bottom: none;
+            }
+
+            .order-items-table td::before {
+                color: #777777;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.09em;
+                text-align: left;
+                text-transform: uppercase;
+            }
+
+            .order-items-table td:nth-child(1)::before {
+                content: "Товар";
+            }
+
+            .order-items-table td:nth-child(2)::before {
+                content: "Размер";
+            }
+
+            .order-items-table td:nth-child(3)::before {
+                content: "Количество";
+            }
+
+            .order-items-table td:nth-child(4)::before {
+                content: "Цена";
+            }
+
+            .order-items-table td:nth-child(5)::before {
+                content: "Сумма";
+            }
+
+    .order-details-button {
+        width: 100%;
+        min-width: 0;
+        min-height: 44px;
+        padding: 12px 18px;
+        font-size: 12px;
+        line-height: 1.35;
+    }
+}
+
+@media (max-width: 768px) {
+    .order-details-page {
+        padding: 26px 16px 56px;
+    }
+
+        .order-details-page h1 {
+            margin-bottom: 28px;
+            font-size: 24px;
+            line-height: 1.25;
+        }
+
+    .order-details-summary {
+        grid-template-columns: 1fr;
+        margin-bottom: 34px;
+    }
+
+        .order-details-summary > div {
+            min-height: auto;
+            padding: 18px 16px;
+            border-right: none;
+            border-bottom: 1px solid #e2e2e2;
+        }
+
+            .order-details-summary > div:last-child {
+                border-bottom: none;
+            }
+
     .order-checkout-info {
         grid-template-columns: 1fr;
     }
 
-    .order-checkout-info-item {
+    .order-checkout-info-item,
+    .order-checkout-info-item:nth-child(2n),
+    .order-checkout-info-item:nth-child(3n) {
+        min-height: auto;
+        padding: 18px 16px;
         border-right: none;
+        border-bottom: 1px solid #e2e2e2;
     }
+
+        .order-checkout-info-item:last-child {
+            border-bottom: none;
+        }
+
+    .order-details-label {
+        margin-bottom: 7px;
+        font-size: 11px;
+    }
+
+    .order-details-value {
+        font-size: 15px;
+        line-height: 1.4;
+    }
+
+    .order-details-section {
+        margin-bottom: 30px;
+    }
+
+        .order-details-section h2 {
+            margin-bottom: 20px;
+            font-size: 21px;
+        }
+
+    .order-items-table tr {
+        padding: 18px 16px;
+    }
+
+    .order-items-table td {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+}
+
+@media (max-width: 430px) {
+    .order-details-page {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+        .order-details-page h1 {
+            font-size: 22px;
+        }
+
+    .order-details-summary,
+    .order-checkout-info,
+    .order-details-section {
+        max-width: none;
+    }
+
+    .order-details-section h2 {
+        font-size: 19px;
+    }
+
+    .order-items-table tr {
+        padding: 16px 14px;
+    }
+
+    .order-items-table td {
+        grid-template-columns: 1fr;
+        gap: 5px;
+        font-size: 13px;
+    }
+
+        .order-items-table td::before {
+            font-size: 11px;
+        }
 }

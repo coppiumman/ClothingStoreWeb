@@ -6,34 +6,74 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Просмотр</PageTitle>
+<PageTitle>Просмотр позиции заказа</PageTitle>
 
-<h1>Просмотр</h1>
+<div class="orderitem-details-page">
+    <div class="orderitem-details-header">
+        <h1>Просмотр позиции заказа</h1>
+        <p>
+            На странице отображается отдельная позиция заказа: номер заказа,
+            статус, товар, выбранный размер, количество и стоимость позиции.
+        </p>
+    </div>
 
-<div>
-    <h2>Позиция заказа</h2>
-    <hr />
     @if (orderitem is null)
     {
         <p><em>Загрузка...</em></p>
     }
-    else {
-        <dl class="row">
-            <dt class="col-sm-2">Заказ</dt>
-            <dd class="col-sm-10">@(orderitem.Order is null ? $"Заказ №{orderitem.Order_Id}" : GetOrderDisplayName(orderitem.Order))</dd>
-            <dt class="col-sm-2">Статус заказа</dt>
-            <dd class="col-sm-10">@GetOrderStatusName(orderitem.Order?.Order_Status)</dd>
-            <dt class="col-sm-2">Товар</dt>
-            <dd class="col-sm-10">@(orderitem.Product?.Product_Name ?? orderitem.Product_Id.ToString())</dd>
-            <dt class="col-sm-2">Размер</dt>
-            <dd class="col-sm-10">@(orderitem.Size?.Size_Name ?? orderitem.Size_Id.ToString())</dd>
-            <dt class="col-sm-2">Количество</dt>
-            <dd class="col-sm-10">@orderitem.OrderItem_Quantity</dd>
-            <dt class="col-sm-2">Цена позиции</dt>
-            <dd class="col-sm-10">@orderitem.OrderItem_Price</dd>
-        </dl>
-        <div>
-            <a href="/orderitems">Вернуться к списку</a>
+    else
+    {
+        <div class="orderitem-details-summary">
+            <div>
+                <span>Заказ</span>
+                <strong>@(orderitem.Order is null ? $"Заказ №{orderitem.Order_Id}" : GetOrderDisplayName(orderitem.Order))</strong>
+            </div>
+
+            <div>
+                <span>Статус заказа</span>
+                <strong class="orderitem-status @GetOrderStatusCssClass(orderitem.Order?.Order_Status)">
+                    @GetOrderStatusName(orderitem.Order?.Order_Status)
+                </strong>
+            </div>
+
+            <div>
+                <span>Цена позиции</span>
+                <strong>@orderitem.OrderItem_Price.ToString("N2") ₽</strong>
+            </div>
+        </div>
+
+        <div class="orderitem-details-card">
+            <h2>Данные позиции</h2>
+
+            <div class="orderitem-details-row">
+                <span>Товар</span>
+                <strong>@(orderitem.Product?.Product_Name ?? orderitem.Product_Id.ToString())</strong>
+            </div>
+
+            <div class="orderitem-details-row">
+                <span>Размер</span>
+                <strong>@(orderitem.Size?.Size_Name ?? orderitem.Size_Id.ToString())</strong>
+            </div>
+
+            <div class="orderitem-details-row">
+                <span>Количество</span>
+                <strong>@orderitem.OrderItem_Quantity</strong>
+            </div>
+
+            <div class="orderitem-details-row">
+                <span>Цена позиции</span>
+                <strong>@orderitem.OrderItem_Price.ToString("N2") ₽</strong>
+            </div>
+        </div>
+
+        <div class="orderitem-details-actions">
+            <a class="orderitem-button" href="/orderitems">
+                Вернуться к списку
+            </a>
+
+            <a class="orderitem-button" href="@($"/orders/details?id={orderitem.Order_Id}")">
+                Открыть заказ
+            </a>
         </div>
     }
 </div>
@@ -52,11 +92,13 @@
             return;
         }
 
-        using var context = DbFactory.CreateDbContext();
+        await using var context = await DbFactory.CreateDbContextAsync();
+
         orderitem = await context.OrderItems
             .Include(oi => oi.Order)
             .Include(oi => oi.Product)
             .Include(oi => oi.Size)
+            .AsNoTracking()
             .FirstOrDefaultAsync(m => m.OrderItem_Id == OrderItem_Id);
 
         if (orderitem is null)
@@ -65,7 +107,10 @@
         }
     }
 
-    private string GetOrderDisplayName(Order order) => $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy}";
+    private string GetOrderDisplayName(Order order)
+    {
+        return $"Заказ №{order.Order_Id} от {order.Order_Date:dd.MM.yyyy HH:mm}";
+    }
 
     private static string GetOrderStatusName(string? status)
     {
@@ -81,6 +126,23 @@
             "cancelled" => "Отменён",
             "returned" => "Возврат",
             _ => status ?? ""
+        };
+    }
+
+    private static string GetOrderStatusCssClass(string? status)
+    {
+        return status switch
+        {
+            "new" => "orderitem-status-new",
+            "confirmed" => "orderitem-status-confirmed",
+            "paid" => "orderitem-status-paid",
+            "processing" => "orderitem-status-processing",
+            "shipped" => "orderitem-status-shipped",
+            "delivered" => "orderitem-status-delivered",
+            "done" => "orderitem-status-done",
+            "cancelled" => "orderitem-status-cancelled",
+            "returned" => "orderitem-status-returned",
+            _ => "orderitem-status-default"
         };
     }
 }

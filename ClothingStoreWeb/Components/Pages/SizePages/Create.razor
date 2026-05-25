@@ -6,42 +6,68 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Добавление</PageTitle>
+<PageTitle>Добавление размера</PageTitle>
 
-<h1>Добавление</h1>
+<div class="size-form-page">
+    <div class="size-form-header">
+        <h1>Добавление размера</h1>
+        <p>
+            Добавьте новый размер одежды. После добавления размер можно будет использовать
+            при настройке складских остатков и оформлении товаров.
+        </p>
+    </div>
 
-<h2>Размер</h2>
-<hr />
-@if (Size is null)
-{
-    <p><em>Загрузка...</em></p>
-}
-else
-{
-    <div class="row">
-        <div class="col-md-4">
+    @if (Size is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <div class="size-form-card">
             <EditForm method="post" Model="Size" OnValidSubmit="AddSize" FormName="create" Enhance>
                 <DataAnnotationsValidator />
-                <ValidationSummary class="text-danger" role="alert"/>
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="size_name" class="form-label">Размер:</label> 
-                    <InputText id="size_name" @bind-Value="Size.Size_Name" class="form-control" aria-required="true"/> 
-                    <ValidationMessage For="() => Size.Size_Name" class="text-danger" /> 
-                </div>        
-                <button type="submit" class="btn btn-primary">Добавить</button>
+                <ValidationSummary class="text-danger" role="alert" />
+
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <div class="size-form-alert">
+                        @errorMessage
+                    </div>
+                }
+
+                <div class="size-form-group">
+                    <label for="size_name">
+                        Размер <span>*</span>
+                    </label>
+
+                    <InputText id="size_name"
+                               @bind-Value="Size.Size_Name"
+                               class="size-form-control"
+                               aria-required="true"
+                               placeholder="Например: 42, 44, S, M, L" />
+
+                    <ValidationMessage For="() => Size.Size_Name" class="text-danger" />
+                </div>
+
+                <div class="size-form-actions">
+                    <button type="submit" class="size-button size-button-primary">
+                        Добавить размер
+                    </button>
+
+                    <a class="size-button" href="/sizes">
+                        Отмена
+                    </a>
+                </div>
             </EditForm>
         </div>
-    </div>
-}
-
-<div>
-    <a href="/sizes">Вернуться к списку</a>
+    }
 </div>
 
 @code {
     [SupplyParameterFromForm]
-    private Size Size { get; set; } = default!;
+    private Size Size { get; set; } = new();
+
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -54,12 +80,32 @@ else
         Size ??= new();
     }
 
-    // To protect from overposting attacks, see https://learn.microsoft.com/aspnet/core/blazor/forms/#mitigate-overposting-attacks.
     private async Task AddSize()
     {
-        using var context = DbFactory.CreateDbContext();
+        errorMessage = null;
+
+        Size.Size_Name = Size.Size_Name?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(Size.Size_Name))
+        {
+            errorMessage = "Укажите размер.";
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        var sizeExists = await context.Sizes
+            .AnyAsync(size => size.Size_Name == Size.Size_Name);
+
+        if (sizeExists)
+        {
+            errorMessage = "Размер с таким названием уже существует.";
+            return;
+        }
+
         context.Sizes.Add(Size);
         await context.SaveChangesAsync();
+
         NavigationManager.NavigateTo("/sizes");
     }
 }

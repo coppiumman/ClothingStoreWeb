@@ -1,0 +1,116 @@
+.employee-delete-page {
+    max-width: 900px;
+}
+
+.employee-delete-header {
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+    .employee-delete-header h1 {
+        margin: 0 0 8px;
+        font-size: 34px;
+        font-weight: 400;
+    }
+
+    .employee-delete-header p {
+        max-width: 760px;
+        margin: 0;
+        color: #666666;
+        line-height: 1.5;
+    }
+
+.employee-delete-card {
+    max-width: 720px;
+    border: 1px solid #e4e4e4;
+    background: #ffffff;
+    padding: 24px;
+}
+
+.employee-delete-warning {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border: 1px solid #ead69b;
+    background: #fff8df;
+    color: #6f5200;
+}
+
+.employee-delete-row {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 18px;
+    padding: 14px 0;
+    border-bottom: 1px solid #eeeeee;
+}
+
+    .employee-delete-row span {
+        color: #666666;
+    }
+
+    .employee-delete-row strong {
+        font-weight: 500;
+    }
+
+.employee-delete-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 22px;
+}
+
+.employee-button {
+    min-height: 38px;
+    padding: 9px 18px;
+    border: 1px solid #d7d7d7;
+    background: #ffffff;
+    color: #1f1f1f;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+    .employee-button:hover {
+        background: #f5f5f5;
+        color: #1f1f1f;
+        text-decoration: none;
+    }
+
+.employee-button-danger {
+    background: #a22626;
+    border-color: #a22626;
+    color: #ffffff;
+}
+
+    .employee-button-danger:hover {
+        background: #8f1f1f;
+        color: #ffffff;
+    }
+
+    .employee-button-danger:disabled {
+        background: #d8d8d8;
+        border-color: #d8d8d8;
+        color: #777777;
+        cursor: not-allowed;
+    }
+
+@media (max-width: 640.98px) {
+    .employee-delete-header h1 {
+        font-size: 28px;
+    }
+
+    .employee-delete-card {
+        padding: 18px;
+    }
+
+    .employee-delete-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .employee-button {
+        width: 100%;
+    }
+}

@@ -14,44 +14,97 @@
 
 <PageTitle>Позиции заказа</PageTitle>
 
-<h1>Позиции заказа</h1>
+<div class="orderitems-page">
+    <div class="orderitems-header">
+        <div>
+            <h1>Позиции заказа</h1>
+            <p>
+                В разделе отображается состав заказов: выбранные товары, размеры,
+                количество и цена каждой позиции. Данные используются для проверки
+                содержимого заказа и выгрузки информации в Excel.
+            </p>
+        </div>
 
-<div class="mb-3">
-    <button type="button"
-            class="btn btn-outline-success"
-            @onclick="ExportOrderItemsToExcelAsync">
-        Экспорт в Excel
-    </button>
+        <div class="orderitems-header-actions">
+            <button type="button"
+                    class="orderitems-button orderitems-button-secondary"
+                    @onclick="ExportOrderItemsToExcelAsync">
+                Экспорт в Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="orderitems-filter-panel">
+        <label for="orderitem-search">Поиск позиции</label>
+
+        <div class="orderitems-search-row">
+            <input id="orderitem-search"
+                   type="search"
+                   class="orderitems-search-input"
+                   @bind="searchText"
+                   @bind:event="oninput"
+                   placeholder="Введите № заказа, товар, размер или статус" />
+
+            @if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                <button type="button"
+                        class="orderitems-button"
+                        @onclick="ClearSearch">
+                    Очистить
+                </button>
+            }
+        </div>
+
+        <div class="orderitems-filter-hint">
+            Например: <strong>24</strong>, <strong>VELD</strong>, <strong>36</strong> или <strong>Отменён</strong>.
+        </div>
+    </div>
+
+    <div class="orderitems-table-card">
+        <QuickGrid Class="orderitems-table" Items="FilteredOrderItems">
+            <TemplateColumn Title="Заказ" Context="orderitem">
+                Заказ №@orderitem.Order_Id
+            </TemplateColumn>
+
+            <TemplateColumn Title="Статус заказа" Context="orderitem">
+                <span class="orderitems-status @GetOrderStatusCssClass(orderitem.Order?.Order_Status)">
+                    @GetOrderStatusName(orderitem.Order?.Order_Status)
+                </span>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Товар" Context="orderitem">
+                @(orderitem.Product?.Product_Name ?? orderitem.Product_Id.ToString())
+            </TemplateColumn>
+
+            <TemplateColumn Title="Размер" Context="orderitem">
+                @(orderitem.Size?.Size_Name ?? orderitem.Size_Id.ToString())
+            </TemplateColumn>
+
+            <PropertyColumn Property="orderitem => orderitem.OrderItem_Quantity" Title="Количество" />
+
+            <TemplateColumn Title="Цена позиции" Context="orderitem">
+                @orderitem.OrderItem_Price.ToString("N2") ₽
+            </TemplateColumn>
+
+            <TemplateColumn Title="Действия" Context="orderitem">
+                <div class="orderitems-actions">
+                    <a class="orderitems-action-button"
+                       href="@($"/orderitems/details?orderitem_id={orderitem.OrderItem_Id}")">
+                        Подробнее
+                    </a>
+                </div>
+            </TemplateColumn>
+        </QuickGrid>
+    </div>
 </div>
-
-<QuickGrid Class="table" Items="orderItems">
-    <TemplateColumn Title="Заказ">
-        Заказ №@context.Order_Id
-    </TemplateColumn>
-
-    <TemplateColumn Title="Статус заказа">
-        @GetOrderStatusName(context.Order?.Order_Status)
-    </TemplateColumn>
-
-    <TemplateColumn Title="Товар">
-        @(context.Product?.Product_Name ?? context.Product_Id.ToString())
-    </TemplateColumn>
-
-    <TemplateColumn Title="Размер">
-        @(context.Size?.Size_Name ?? context.Size_Id.ToString())
-    </TemplateColumn>
-
-    <PropertyColumn Property="orderitem => orderitem.OrderItem_Quantity" Title="Количество" />
-    <PropertyColumn Property="orderitem => orderitem.OrderItem_Price" Title="Цена позиции" />
-
-    <TemplateColumn Context="orderitem">
-        <a href="@($"orderitems/details?orderitem_id={orderitem.OrderItem_Id}")">Подробнее</a>
-    </TemplateColumn>
-</QuickGrid>
 
 @code {
     private ApplicationDbContext? context;
     private IQueryable<OrderItem> orderItems = Enumerable.Empty<OrderItem>().AsQueryable();
+
+    private string searchText = string.Empty;
+
+    private IQueryable<OrderItem> FilteredOrderItems => GetFilteredOrderItems();
 
     protected override async Task OnInitializedAsync()
     {
@@ -62,12 +115,14 @@
         }
 
         context = DbFactory.CreateDbContext();
+
         orderItems = context.OrderItems
             .Include(orderItem => orderItem.Order)
             .Include(orderItem => orderItem.Product)
             .Include(orderItem => orderItem.Size)
             .AsNoTracking()
-            .OrderBy(orderItem => orderItem.OrderItem_Id);
+            .OrderByDescending(orderItem => orderItem.Order_Id)
+            .ThenBy(orderItem => orderItem.OrderItem_Id);
     }
 
     public async ValueTask DisposeAsync()
@@ -76,6 +131,108 @@
         {
             await context.DisposeAsync();
         }
+    }
+
+    private IQueryable<OrderItem> GetFilteredOrderItems()
+    {
+        var query = orderItems;
+
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return query;
+        }
+
+        var value = searchText.Trim();
+
+        int? number = null;
+        var onlyDigits = new string(value.Where(char.IsDigit).ToArray());
+
+        if (int.TryParse(onlyDigits, out var parsedNumber))
+        {
+            number = parsedNumber;
+        }
+
+        var statusValues = GetSearchStatusValues(value);
+
+        return query.Where(orderItem =>
+            (number.HasValue &&
+                (
+                    orderItem.Order_Id == number.Value ||
+                    orderItem.OrderItem_Quantity == number.Value
+                )
+            ) ||
+            (orderItem.Product != null &&
+                orderItem.Product.Product_Name.Contains(value)) ||
+            (orderItem.Size != null &&
+                orderItem.Size.Size_Name.Contains(value)) ||
+            (orderItem.Order != null &&
+             orderItem.Order.Order_Status != null &&
+                (
+                    orderItem.Order.Order_Status.Contains(value) ||
+                    statusValues.Contains(orderItem.Order.Order_Status)
+                )
+            )
+        );
+    }
+
+    private void ClearSearch()
+    {
+        searchText = string.Empty;
+    }
+
+    private static string[] GetSearchStatusValues(string value)
+    {
+        var lowerValue = value
+            .Trim()
+            .ToLowerInvariant()
+            .Replace("ё", "е");
+
+        if (lowerValue.Contains("нов"))
+        {
+            return new[] { "new", "Новый" };
+        }
+
+        if (lowerValue.Contains("подтверж"))
+        {
+            return new[] { "confirmed", "Подтверждён", "Подтвержден" };
+        }
+
+        if (lowerValue.Contains("оплач"))
+        {
+            return new[] { "paid", "Оплачен" };
+        }
+
+        if (lowerValue.Contains("обработ"))
+        {
+            return new[] { "processing", "В обработке" };
+        }
+
+        if (lowerValue.Contains("отправ"))
+        {
+            return new[] { "shipped", "Отправлен" };
+        }
+
+        if (lowerValue.Contains("достав"))
+        {
+            return new[] { "delivered", "Доставлен" };
+        }
+
+        if (lowerValue.Contains("заверш"))
+        {
+            return new[] { "done", "Завершён", "Завершен" };
+        }
+
+        if (lowerValue.Contains("отмен"))
+        {
+            return new[] { "cancelled", "Отменён", "Отменен" };
+        }
+
+        if (lowerValue.Contains("возврат"))
+        {
+            return new[] { "returned", "Возврат" };
+        }
+
+        return Array.Empty<string>();
     }
 
     private static string GetOrderStatusName(string? status)
@@ -92,6 +249,23 @@
             "cancelled" => "Отменён",
             "returned" => "Возврат",
             _ => status ?? ""
+        };
+    }
+
+    private static string GetOrderStatusCssClass(string? status)
+    {
+        return status switch
+        {
+            "new" => "orderitems-status-new",
+            "confirmed" => "orderitems-status-confirmed",
+            "paid" => "orderitems-status-paid",
+            "processing" => "orderitems-status-processing",
+            "shipped" => "orderitems-status-shipped",
+            "delivered" => "orderitems-status-delivered",
+            "done" => "orderitems-status-done",
+            "cancelled" => "orderitems-status-cancelled",
+            "returned" => "orderitems-status-returned",
+            _ => "orderitems-status-default"
         };
     }
 

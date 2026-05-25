@@ -1,5 +1,6 @@
 @page "/orders"
 @attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@using System.Globalization
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
@@ -14,61 +15,110 @@
 
 <PageTitle>Заказы</PageTitle>
 
-<h1>Заказы</h1>
+<div class="orders-page">
+    <div class="orders-header">
+        <div>
+            <h1>Заказы</h1>
+            <p>
+                В разделе отображаются заказы покупателей. Сотрудник может найти нужный заказ,
+                посмотреть состав заказа, изменить статус или отменить заказ, если его обработка ещё не завершена.
+            </p>
+        </div>
 
-<div class="mb-3">
-    <button type="button"
-            class="btn btn-outline-success"
-            @onclick="ExportOrdersToExcelAsync">
-        Экспорт в Excel
-    </button>
+        <div class="orders-header-actions">
+            <button type="button"
+                    class="orders-button orders-button-secondary"
+                    @onclick="ExportOrdersToExcelAsync">
+                Экспорт в Excel
+            </button>
+        </div>
+    </div>
+
+    <div class="orders-filter-panel">
+        <label for="order-search">Поиск заказа</label>
+
+        <div class="orders-search-row">
+            <input id="order-search"
+                   type="search"
+                   class="orders-search-input"
+                   @bind="searchText"
+                   @bind:event="oninput"
+                   placeholder="Введите № заказа, ФИО, email или дату" />
+
+            @if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                <button type="button"
+                        class="orders-button"
+                        @onclick="ClearSearch">
+                    Очистить
+                </button>
+            }
+        </div>
+
+        <div class="orders-filter-hint">
+            Например: <strong>24</strong>, <strong>Иванов</strong>, <strong>admin@admin.ru</strong> или <strong>24.05.2026</strong>.
+        </div>
+    </div>
+
+    <div class="orders-table-card">
+        <QuickGrid Class="orders-table" Items="FilteredOrders">
+            <TemplateColumn Title="Номер заказа" Context="order">
+                Заказ №@order.Order_Id
+            </TemplateColumn>
+
+            <TemplateColumn Title="Пользователь" Context="order">
+                @GetUserDisplayName(order.User)
+            </TemplateColumn>
+
+            <TemplateColumn Title="Дата заказа" Context="order">
+                @order.Order_Date.ToString("dd.MM.yyyy HH:mm")
+            </TemplateColumn>
+
+            <TemplateColumn Title="Статус" Context="order">
+                <span class="orders-status @GetOrderStatusCssClass(order.Order_Status)">
+                    @GetOrderStatusName(order.Order_Status)
+                </span>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Сумма заказа" Context="order">
+                @order.Order_TotalAmount.ToString("N2") ₽
+            </TemplateColumn>
+
+            <TemplateColumn Title="Действия" Context="order">
+                <div class="orders-actions">
+                    <a class="orders-action-button"
+                       href="@($"/orders/details?id={order.Order_Id}")">
+                        Подробнее
+                    </a>
+
+                    @if (canDelete && CanCancelOrder(order.Order_Status))
+                    {
+                        <a class="orders-action-button orders-action-danger"
+                           href="@($"/orders/delete?id={order.Order_Id}")">
+                            Отменить
+                        </a>
+                    }
+                    else if (canDelete)
+                    {
+                        <span class="orders-action-muted">
+                            Отмена недоступна
+                        </span>
+                    }
+                </div>
+            </TemplateColumn>
+        </QuickGrid>
+    </div>
 </div>
-
-<QuickGrid Class="table" Items="orders">
-    <TemplateColumn Title="Номер заказа">
-        Заказ №@context.Order_Id
-    </TemplateColumn>
-    <TemplateColumn Title="Пользователь">
-        @GetUserDisplayName(context.User)
-    </TemplateColumn>
-    <PropertyColumn Property="order => order.Order_Date" Title="Дата заказа" />
-    <TemplateColumn Title="Статус заказа">
-        @GetOrderStatusName(context.Order_Status)
-    </TemplateColumn>
-    <PropertyColumn Property="order => order.Order_TotalAmount" Title="Сумма заказа" />
-
-    <TemplateColumn Context="order">
-        <td class="table-actions">
-            @if (canEdit)
-            {
-                <a href="@($"/orders/edit?id={order.Order_Id}")">Изменить</a>
-                <span> | </span>
-            }
-
-            <a href="@($"/orders/details?id={order.Order_Id}")">Подробнее</a>
-
-            @if (canEdit)
-            {
-                @if (CanCancelOrder(order.Order_Status))
-                {
-                    <span> | </span>
-                    <a href="@($"/orders/delete?id={order.Order_Id}")">Отменить</a>
-                }
-                else
-                {
-                    <span class="text-muted">Отмена недоступна</span>
-                }
-            }
-        </td>
-    </TemplateColumn>
-</QuickGrid>
 
 @code {
     private ApplicationDbContext? context;
     private IQueryable<Order> orders = Enumerable.Empty<Order>().AsQueryable();
-    private bool canCreate;
-    private bool canEdit;
+
     private bool canDelete;
+
+    private string searchText = string.Empty;
+
+    private IQueryable<Order> FilteredOrders => GetFilteredOrders();
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,15 +128,15 @@
             return;
         }
 
-        canCreate = await AccessService.CanCreateAsync("Orders");
-        canEdit = await AccessService.CanEditAsync("Orders");
         canDelete = await AccessService.CanDeleteAsync("Orders");
 
         context = DbFactory.CreateDbContext();
+
         orders = context.Orders
             .Include(order => order.User)
             .AsNoTracking()
-            .OrderBy(order => order.Order_Id);
+            .OrderByDescending(order => order.Order_Date)
+            .ThenByDescending(order => order.Order_Id);
     }
 
     public async ValueTask DisposeAsync()
@@ -97,16 +147,75 @@
         }
     }
 
+    private IQueryable<Order> GetFilteredOrders()
+    {
+        var query = orders;
+
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return query;
+        }
+
+        var value = searchText.Trim();
+
+        int? orderId = null;
+        var onlyDigits = new string(value.Where(char.IsDigit).ToArray());
+
+        if (int.TryParse(onlyDigits, out var parsedOrderId))
+        {
+            orderId = parsedOrderId;
+        }
+
+        DateTime? orderDate = null;
+
+        if (DateTime.TryParseExact(
+                value,
+                new[] { "dd.MM.yyyy", "d.M.yyyy", "yyyy-MM-dd" },
+                CultureInfo.GetCultureInfo("ru-RU"),
+                DateTimeStyles.None,
+                out var parsedDate))
+        {
+            orderDate = parsedDate.Date;
+        }
+
+        var dateStart = orderDate;
+        var dateEnd = orderDate?.AddDays(1);
+
+        return query.Where(order =>
+            (orderId.HasValue && order.Order_Id == orderId.Value) ||
+            (order.User != null &&
+                (
+                    (order.User.UserFullName != null && order.User.UserFullName.Contains(value)) ||
+                    (order.User.Email != null && order.User.Email.Contains(value))
+                )
+            ) ||
+            (dateStart.HasValue &&
+                order.Order_Date >= dateStart.Value &&
+                order.Order_Date < dateEnd!.Value)
+        );
+    }
+
+    private void ClearSearch()
+    {
+        searchText = string.Empty;
+    }
+
     private static string GetUserDisplayName(ApplicationUser? user)
     {
         if (user is null)
+        {
             return "";
+        }
 
         if (!string.IsNullOrWhiteSpace(user.UserFullName))
+        {
             return user.UserFullName;
+        }
 
         if (!string.IsNullOrWhiteSpace(user.Email))
+        {
             return user.Email;
+        }
 
         return user.Id;
     }
@@ -136,6 +245,23 @@
         };
     }
 
+    private static string GetOrderStatusCssClass(string? status)
+    {
+        return status switch
+        {
+            "new" => "orders-status-new",
+            "confirmed" => "orders-status-confirmed",
+            "paid" => "orders-status-paid",
+            "processing" => "orders-status-processing",
+            "shipped" => "orders-status-shipped",
+            "delivered" => "orders-status-delivered",
+            "done" => "orders-status-done",
+            "cancelled" => "orders-status-cancelled",
+            "returned" => "orders-status-returned",
+            _ => "orders-status-default"
+        };
+    }
+
     private async Task DownloadExcelAsync(XLWorkbook workbook, string fileName)
     {
         using var stream = new MemoryStream();
@@ -159,7 +285,8 @@
         var ordersForExport = await dbContext.Orders
             .Include(order => order.User)
             .AsNoTracking()
-            .OrderBy(order => order.Order_Id)
+            .OrderByDescending(order => order.Order_Date)
+            .ThenByDescending(order => order.Order_Id)
             .ToListAsync();
 
         using var workbook = new XLWorkbook();

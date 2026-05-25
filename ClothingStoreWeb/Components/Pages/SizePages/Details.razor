@@ -6,36 +6,127 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Просмотр</PageTitle>
+<PageTitle>Просмотр размера</PageTitle>
 
-<h1>Просмотр</h1>
+<div class="size-details-page">
+    <div class="size-details-header">
+        <div>
+            <h1>Просмотр размера</h1>
+            <p>
+                На странице отображается выбранный размер, его складские остатки
+                и использование в позициях заказов.
+            </p>
+        </div>
+    </div>
 
-<div>
-    <h2>Размер</h2>
-    <hr />
     @if (size is null)
     {
         <p><em>Загрузка...</em></p>
     }
-    else {
-        <dl class="row">
-            <dt class="col-sm-2">Размер</dt>
-            <dd class="col-sm-10">@size.Size_Name</dd>
-        </dl>
-        <div>
+    else
+    {
+        <div class="size-details-card">
+            <div class="size-details-row">
+                <span>Размер</span>
+                <strong>@size.Size_Name</strong>
+            </div>
+        </div>
+
+        <div class="size-details-actions">
             @if (canEdit)
             {
-                <a href="@($"/sizes/edit?size_id={size.Size_Id}")">Изменить</a>
-                <span> | </span>
+                <a class="size-details-button size-details-button-primary"
+                   href="@($"/sizes/edit?size_id={size.Size_Id}")">
+                    Изменить
+                </a>
             }
-            <a href="@($"/sizes")">Вернуться к списку</a>
+
+            <a class="size-details-button" href="/sizes">
+                Вернуться к списку
+            </a>
         </div>
+
+        <section class="size-usage-section">
+            <h2>Складские остатки с этим размером</h2>
+
+            @if (stockRows.Count == 0)
+            {
+                <div class="size-empty-message">
+                    Для этого размера пока нет складских записей.
+                </div>
+            }
+            else
+            {
+                <div class="size-table-card size-stock-table-card">
+                    <table class="size-usage-table">
+                        <thead>
+                            <tr>
+                                <th>Категория</th>
+                                <th>Товар</th>
+                                <th>Остаток</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in stockRows)
+                            {
+                                <tr>
+                                    <td>@row.CategoryName</td>
+                                    <td>@row.ProductName</td>
+                                    <td>@row.Quantity</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <section class="size-usage-section">
+            <h2>Использование размера в заказах</h2>
+
+            @if (orderRows.Count == 0)
+            {
+                <div class="size-empty-message">
+                    Этот размер пока не использовался в заказах.
+                </div>
+            }
+            else
+            {
+                <div class="size-table-card size-orders-table-card">
+                    <table class="size-usage-table">
+                        <thead>
+                            <tr>
+                                <th>Заказ</th>
+                                <th>Статус</th>
+                                <th>Товар</th>
+                                <th>Количество</th>
+                                <th>Цена позиции</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in orderRows)
+                            {
+                                <tr>
+                                    <td>Заказ №@row.OrderId</td>
+                                    <td>@GetOrderStatusText(row.OrderStatus)</td>
+                                    <td>@row.ProductName</td>
+                                    <td>@row.Quantity</td>
+                                    <td>@row.Price.ToString("N2") ₽</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
     }
 </div>
 
 @code {
     private Size? size;
     private bool canEdit;
+    private List<SizeStockRow> stockRows = new();
+    private List<SizeOrderRow> orderRows = new();
 
     [SupplyParameterFromQuery]
     private int Size_Id { get; set; }
@@ -50,12 +141,92 @@
 
         canEdit = await AccessService.CanEditAsync("Sizes");
 
-        using var context = DbFactory.CreateDbContext();
-        size = await context.Sizes.FirstOrDefaultAsync(m => m.Size_Id == Size_Id);
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        size = await context.Sizes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(m => m.Size_Id == Size_Id);
 
         if (size is null)
         {
             NavigationManager.NavigateTo("notfound");
+            return;
         }
+
+        stockRows = await context.Stocks
+            .AsNoTracking()
+            .Include(stock => stock.Product)
+                .ThenInclude(product => product!.Category)
+            .Where(stock => stock.Size_Id == Size_Id)
+            .OrderBy(stock => stock.Product != null && stock.Product.Category != null
+                ? stock.Product.Category.Category_Name
+                : "Без категории")
+            .ThenBy(stock => stock.Product != null
+                ? stock.Product.Product_Name
+                : "Без названия")
+            .Select(stock => new SizeStockRow
+            {
+                CategoryName = stock.Product != null && stock.Product.Category != null
+                    ? stock.Product.Category.Category_Name
+                    : "Без категории",
+                ProductName = stock.Product != null
+                    ? stock.Product.Product_Name
+                    : "Без названия",
+                Quantity = stock.Stock_Quantity
+            })
+            .ToListAsync();
+
+        orderRows = await context.OrderItems
+            .AsNoTracking()
+            .Include(orderItem => orderItem.Order)
+            .Include(orderItem => orderItem.Product)
+            .Where(orderItem => orderItem.Size_Id == Size_Id)
+            .OrderByDescending(orderItem => orderItem.Order!.Order_Date)
+            .ThenBy(orderItem => orderItem.OrderItem_Id)
+            .Select(orderItem => new SizeOrderRow
+            {
+                OrderId = orderItem.Order_Id,
+                OrderStatus = orderItem.Order != null
+                    ? orderItem.Order.Order_Status
+                    : "",
+                ProductName = orderItem.Product != null
+                    ? orderItem.Product.Product_Name
+                    : "Без названия",
+                Quantity = orderItem.OrderItem_Quantity,
+                Price = orderItem.OrderItem_Price
+            })
+            .ToListAsync();
+    }
+
+    private static string GetOrderStatusText(string? status)
+    {
+        return status switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => string.IsNullOrWhiteSpace(status) ? "Не указан" : status
+        };
+    }
+
+    private sealed class SizeStockRow
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
+
+    private sealed class SizeOrderRow
+    {
+        public int OrderId { get; set; }
+        public string OrderStatus { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal Price { get; set; }
     }
 }

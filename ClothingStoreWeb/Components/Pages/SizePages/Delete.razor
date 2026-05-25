@@ -1,46 +1,78 @@
 @page "/sizes/delete"
-@attribute [Authorize(Roles = "Администратор")]
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Models
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Удаление</PageTitle>
+<PageTitle>Удаление размера</PageTitle>
 
-<h1>Удаление</h1>
+<div class="size-delete-page">
+    <div class="size-delete-header">
+        <h1>Удаление размера</h1>
+        <p>
+            Перед удалением проверьте выбранный размер. Если размер используется в складских
+            остатках или позициях заказов, приложение не позволит удалить его из базы данных.
+        </p>
+    </div>
 
-<p>Вы уверены, что хотите удалить этот элемент?</p>
-<div>
-    <h2>Размер</h2>
-    <hr />
     @if (size is null)
     {
         <p><em>Загрузка...</em></p>
     }
-    else {
-        <dl class="row">
-            <dt class="col-sm-2">Размер</dt>
-            <dd class="col-sm-10">@size.Size_Name</dd>
-        </dl>
-
-        @if (!string.IsNullOrWhiteSpace(deleteError))
-        {
-            <div class="alert alert-danger">
-                @deleteError
+    else
+    {
+        <div class="size-delete-card">
+            <div class="size-delete-warning">
+                Вы действительно хотите удалить этот размер?
             </div>
-        }
 
-        <EditForm method="post" Model="size" OnValidSubmit="DeleteSize" FormName="delete" Enhance>
-            <button type="submit" class="btn btn-danger" disabled="@(size is null)">Удалить</button> |
-            <a href="/sizes">Вернуться к списку</a>
-        </EditForm>
+            <div class="size-delete-row">
+                <span>Размер</span>
+                <strong>@size.Size_Name</strong>
+            </div>
+
+            <div class="size-delete-row">
+                <span>Складские записи</span>
+                <strong>@stockUsageCount</strong>
+            </div>
+
+            <div class="size-delete-row">
+                <span>Позиции заказов</span>
+                <strong>@orderUsageCount</strong>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="size-delete-blocked">
+                    @errorMessage
+                </div>
+            }
+
+            <EditForm method="post" Model="size" OnValidSubmit="DeleteSize" FormName="delete" Enhance>
+                <div class="size-delete-actions">
+                    <button type="submit"
+                            class="size-button size-button-danger">
+                        Удалить размер
+                    </button>
+
+                    <a class="size-button" href="/sizes">
+                        Отмена
+                    </a>
+                </div>
+            </EditForm>
+        </div>
     }
 </div>
 
 @code {
     private Size? size;
-    private string? deleteError;
+    private int stockUsageCount;
+    private int orderUsageCount;
+    private string? errorMessage;
+
+    private bool isUsed => stockUsageCount > 0 || orderUsageCount > 0;
 
     [SupplyParameterFromQuery]
     private int Size_Id { get; set; }
@@ -53,52 +85,53 @@
             return;
         }
 
-        using var context = DbFactory.CreateDbContext();
-        size = await context.Sizes.FirstOrDefaultAsync(m => m.Size_Id == Size_Id);
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        size = await context.Sizes
+            .FirstOrDefaultAsync(size => size.Size_Id == Size_Id);
 
         if (size is null)
         {
             NavigationManager.NavigateTo("notfound");
+            return;
         }
+
+        stockUsageCount = await context.Stocks
+            .CountAsync(stock => stock.Size_Id == Size_Id);
+
+        orderUsageCount = await context.OrderItems
+            .CountAsync(orderItem => orderItem.Size_Id == Size_Id);
     }
+
 
     private async Task DeleteSize()
     {
-        if (size is null)
-        {
-            return;
-        }
+        errorMessage = null;
 
         await using var context = await DbFactory.CreateDbContextAsync();
 
-        var sizeFromDb = await context.Sizes
-            .FirstOrDefaultAsync(s => s.Size_Id == size.Size_Id);
+        var sizeToDelete = await context.Sizes
+            .FirstOrDefaultAsync(size => size.Size_Id == Size_Id);
 
-        if (sizeFromDb is null)
+        if (sizeToDelete is null)
         {
             NavigationManager.NavigateTo("notfound");
             return;
         }
 
-        var isUsedInOrders = await context.OrderItems
-            .AnyAsync(orderItem => orderItem.Size_Id == sizeFromDb.Size_Id);
+        var sizeIsUsed = await context.Stocks.AnyAsync(stock => stock.Size_Id == Size_Id)
+            || await context.OrderItems.AnyAsync(orderItem => orderItem.Size_Id == Size_Id);
 
-        if (isUsedInOrders)
+        if (sizeIsUsed)
         {
-            deleteError = "Удаление невозможно: размер уже используется в заказах.";
+            stockUsageCount = await context.Stocks.CountAsync(stock => stock.Size_Id == Size_Id);
+            orderUsageCount = await context.OrderItems.CountAsync(orderItem => orderItem.Size_Id == Size_Id);
+
+            errorMessage = "Размер используется в складских остатках или заказах, поэтому удалить его нельзя. Сначала необходимо удалить или изменить связанные записи.";
             return;
         }
 
-        var hasStocks = await context.Stocks
-            .AnyAsync(stock => stock.Size_Id == sizeFromDb.Size_Id);
-
-        if (hasStocks)
-        {
-            deleteError = "Удаление невозможно: для размера существуют складские записи.";
-            return;
-        }
-
-        context.Sizes.Remove(sizeFromDb);
+        context.Sizes.Remove(sizeToDelete);
         await context.SaveChangesAsync();
 
         NavigationManager.NavigateTo("/sizes");

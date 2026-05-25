@@ -283,36 +283,231 @@
     cursor: not-allowed;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1300px) {
+    .cart-page {
+        padding-left: 36px;
+        padding-right: 36px;
+    }
+
     .cart-layout {
         grid-template-columns: 1fr;
+        gap: 32px;
     }
 
     .cart-summary {
         position: static;
-        max-width: 520px;
+        max-width: none;
     }
 }
 
 @media (max-width: 768px) {
     .cart-page {
-        padding: 32px 20px 60px;
+        padding: 28px 16px 56px;
     }
 
         .cart-page h1 {
-            font-size: 32px;
+            margin-bottom: 26px;
+            font-size: 28px;
+            line-height: 1.25;
+            letter-spacing: 0.08em;
         }
 
-    .cart-empty {
-        padding: 32px 26px;
+    .cart-products {
+        border: none;
+        overflow-x: visible;
     }
+
+    .cart-table,
+    .cart-table tbody,
+    .cart-table tr,
+    .cart-table td {
+        display: block;
+        width: 100%;
+    }
+
+        .cart-table thead {
+            display: none;
+        }
+
+        .cart-table tr {
+            margin-bottom: 18px;
+            padding: 18px 16px;
+            border: 1px solid #e2e2e2;
+            background: #ffffff;
+        }
+
+        .cart-table td {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px 0;
+            border-bottom: 1px solid #eeeeee;
+            font-size: 14px;
+        }
+
+            .cart-table td:last-child {
+                border-bottom: none;
+            }
+
+            .cart-table td::before {
+                flex: 0 0 auto;
+                color: #777777;
+                font-size: 12px;
+                font-weight: 700;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .cart-table td:nth-child(1)::before {
+                content: "Товар";
+            }
+
+            .cart-table td:nth-child(2)::before {
+                content: "Размер";
+            }
+
+            .cart-table td:nth-child(3)::before {
+                content: "Цена";
+            }
+
+            .cart-table td:nth-child(4)::before {
+                content: "Количество";
+            }
+
+            .cart-table td:nth-child(5)::before {
+                content: "Итого";
+            }
+
+            .cart-table td:nth-child(6)::before {
+                content: "";
+            }
+
+    .cart-product-name {
+        max-width: none;
+        text-align: right;
+        font-size: 15px;
+    }
+
+    .cart-size-cell {
+        text-align: right;
+    }
+
+    .cart-quantity {
+        justify-content: flex-end;
+    }
+
+    .cart-remove-cell {
+        justify-content: flex-end;
+        text-align: right;
+    }
+
+    .cart-remove-button {
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .cart-summary {
+        padding: 24px 18px;
+        max-width: none;
+    }
+
+        .cart-summary h2 {
+            margin-bottom: 22px;
+            font-size: 22px;
+        }
+
+    .cart-summary-row,
+    .cart-summary-total {
+        gap: 14px;
+        font-size: 14px;
+    }
+
+        .cart-summary-row strong,
+        .cart-summary-total strong {
+            min-width: auto;
+            text-align: right;
+        }
+
+    .cart-actions {
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .cart-button {
+        min-height: 44px;
+        padding: 11px 16px;
+        font-size: 12px;
+        line-height: 1.35;
+    }
+
+    .cart-empty {
+        padding: 30px 20px;
+    }
+
+        .cart-empty h2 {
+            font-size: 24px;
+        }
+
+        .cart-empty p {
+            font-size: 14px;
+        }
 
     .cart-empty-actions {
         display: grid;
     }
+}
+
+@media (max-width: 430px) {
+    .cart-page {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+        .cart-page h1 {
+            font-size: 24px;
+        }
+
+    .cart-table tr {
+        padding: 16px 14px;
+    }
+
+    .cart-table td {
+        gap: 12px;
+        font-size: 13px;
+    }
+
+        .cart-table td::before {
+            font-size: 11px;
+        }
+
+    .cart-product-name {
+        font-size: 14px;
+    }
+
+    .cart-quantity-button {
+        width: 32px;
+        height: 32px;
+    }
+
+    .cart-quantity-value {
+        min-width: 32px;
+    }
 
     .cart-summary {
-        max-width: none;
+        padding: 22px 14px;
+    }
+
+        .cart-summary h2 {
+            font-size: 20px;
+        }
+
+    .cart-summary-row,
+    .cart-summary-total {
+        font-size: 13px;
+    }
+
+    .cart-button {
+        font-size: 11px;
     }
 }
 

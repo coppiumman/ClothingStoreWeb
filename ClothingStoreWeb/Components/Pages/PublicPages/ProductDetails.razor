@@ -202,7 +202,11 @@ else
             <div class="product-info-accordion">
                 <details open>
                     <summary>Описание</summary>
-                    <p>@product.Product_Description</p>
+                    <p class="product-description-text">
+                        @(string.IsNullOrWhiteSpace(product.Product_Description)
+                           ? "Описание отсутствует."
+                           : product.Product_Description)
+                    </p>
                 </details>
 
                 <details>

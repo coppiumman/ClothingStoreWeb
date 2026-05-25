@@ -21,7 +21,8 @@ public class EmployeeAccessService(
         "Sizes",
         "Stocks",
         "Orders",
-        "OrderItems"
+        "OrderItems",
+        "HomeBanners"
     ];
 
     public async Task<bool> IsAdminAsync()
@@ -106,6 +107,7 @@ public class EmployeeAccessService(
             "Stocks" => action is EmployeeAction.View or EmployeeAction.Create or EmployeeAction.Edit,
             "Orders" => action is EmployeeAction.View or EmployeeAction.Edit,
             "OrderItems" => action == EmployeeAction.View,
+            "HomeBanners" => action is EmployeeAction.View or EmployeeAction.Create or EmployeeAction.Edit,
             _ => false
         };
     }
@@ -120,6 +122,7 @@ public class EmployeeAccessService(
             "Stocks" => action is EmployeeAction.View or EmployeeAction.Create or EmployeeAction.Edit,
             "Orders" => action == EmployeeAction.View,
             "OrderItems" => action == EmployeeAction.View,
+            "HomeBanners" => action == EmployeeAction.View,
             _ => false
         };
     }

@@ -6,81 +6,117 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Добавление</PageTitle>
+<PageTitle>Добавление запаса</PageTitle>
 
-<h1>Добавление</h1>
+<div class="stock-form-page">
+    <div class="stock-form-header">
+        <h1>Добавление запаса</h1>
+        <p>
+            Добавьте складскую запись для выбранного товара и размера. Один и тот же товар
+            не может иметь две одинаковые записи для одного размера.
+        </p>
+    </div>
 
-<h2>Запас</h2>
+    @if (SelectedCategory is not null)
+    {
+        <div class="stock-category-panel">
+            <span>Выбранная категория</span>
+            <strong>@SelectedCategory.Category_Name</strong>
+        </div>
+    }
 
-@if (SelectedCategory is not null)
-{
-    <p>Категория: <strong>@SelectedCategory.Category_Name</strong></p>
-}
-
-<hr />
-@if (Stock is null)
-{
-    <p><em>Загрузка...</em></p>
-}
-else
-{
-    <div class="row">
-        <div class="col-md-4">
+    @if (Stock is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <div class="stock-form-card">
             <EditForm method="post" Model="Stock" OnValidSubmit="AddStock" FormName="create" Enhance>
                 <DataAnnotationsValidator />
-                <ValidationSummary class="text-danger" role="alert"/>
-                <div class="mb-3">
-                    <label for="product_id" class="form-label">Товар</label>
-                    <InputSelect id="product_id" @bind-Value="Stock.Product_Id" class="form-control" aria-required="true">
+                <ValidationSummary class="text-danger" role="alert" />
+
+                @if (!string.IsNullOrWhiteSpace(createError))
+                {
+                    <div class="stock-form-alert">
+                        @createError
+                    </div>
+                }
+
+                <div class="stock-form-group">
+                    <label for="product_id">Товар <span>*</span></label>
+
+                    <InputSelect id="product_id"
+                                 @bind-Value="Stock.Product_Id"
+                                 class="stock-form-control">
                         <option value="0">Выберите товар</option>
                         @foreach (var product in Products)
                         {
                             <option value="@product.Product_Id">@product.Product_Name</option>
                         }
                     </InputSelect>
+
                     <ValidationMessage For="() => Stock.Product_Id" class="text-danger" />
                 </div>
-                <div class="mb-3">
-                    <label for="size_id" class="form-label">Размер</label>
-                    <InputSelect id="size_id" @bind-Value="Stock.Size_Id" class="form-control" aria-required="true">
+
+                <div class="stock-form-group">
+                    <label for="size_id">Размер <span>*</span></label>
+
+                    <InputSelect id="size_id"
+                                 @bind-Value="Stock.Size_Id"
+                                 class="stock-form-control">
                         <option value="0">Выберите размер</option>
                         @foreach (var size in Sizes)
                         {
                             <option value="@size.Size_Id">@size.Size_Name</option>
                         }
                     </InputSelect>
+
                     <ValidationMessage For="() => Stock.Size_Id" class="text-danger" />
                 </div>
 
-                @if (!string.IsNullOrWhiteSpace(createError))
-                {
-                    <div class="alert alert-danger">
-                        @createError
-                    </div>
-                }
+                <div class="stock-form-group">
+                    <label for="stock_quantity">Количество на складе <span>*</span></label>
 
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="stock_quantity" class="form-label">Количество на складе:</label> 
-                    <InputNumber id="stock_quantity" @bind-Value="Stock.Stock_Quantity" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректное количество на складе"/> 
-                    <ValidationMessage For="() => Stock.Stock_Quantity" class="text-danger" /> 
-                </div>        
-                <button type="submit" class="btn btn-primary">Добавить</button>
+                    <InputNumber id="stock_quantity"
+                                 @bind-Value="Stock.Stock_Quantity"
+                                 class="stock-form-control"
+                                 min="0"
+                                 ParsingErrorMessage="Введите корректное количество на складе" />
+
+                    <ValidationMessage For="() => Stock.Stock_Quantity" class="text-danger" />
+                </div>
+
+                <div class="stock-form-actions">
+                    <button type="submit" class="stock-button stock-button-primary">
+                        Добавить запас
+                    </button>
+
+                    <a class="stock-button" href="@BackUrl">
+                        Отмена
+                    </a>
+                </div>
             </EditForm>
         </div>
-    </div>
-}
-
-<div>
-    <a href="@($"/stocks?category_id={Category_Id}")">Вернуться к списку</a>
+    }
 </div>
 
 @code {
     [SupplyParameterFromForm]
-    private Stock Stock { get; set; } = default!;
+    private Stock Stock { get; set; } = new();
+
     private List<Product> Products { get; set; } = new();
     private List<Size> Sizes { get; set; } = new();
     private string? createError;
+
+    [SupplyParameterFromQuery]
+    private int Category_Id { get; set; }
+
+    private Category? SelectedCategory;
+
+    private string BackUrl => Category_Id == 0
+        ? "/stocks"
+        : $"/stocks?category_id={Category_Id}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -92,12 +128,13 @@ else
 
         Stock ??= new();
 
-        using var context = DbFactory.CreateDbContext();
         if (Category_Id == 0)
         {
             NavigationManager.NavigateTo("/stocks");
             return;
         }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
 
         SelectedCategory = await context.Categories
             .AsNoTracking()
@@ -110,11 +147,14 @@ else
         }
 
         Products = await context.Products
+            .AsNoTracking()
             .Where(product => product.Category_Id == Category_Id)
-            .OrderBy(product => product.Product_Name)
+            .OrderBy(product => product.Product_DisplayOrder)
+            .ThenBy(product => product.Product_Name)
             .ToListAsync();
 
         Sizes = await context.Sizes
+            .AsNoTracking()
             .OrderBy(size => size.Size_Name)
             .ToListAsync();
     }
@@ -135,7 +175,13 @@ else
             return;
         }
 
-        using var context = DbFactory.CreateDbContext();
+        if (Stock.Stock_Quantity < 0)
+        {
+            createError = "Количество на складе не может быть отрицательным.";
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
 
         var stockAlreadyExists = await context.Stocks.AnyAsync(stock =>
             stock.Product_Id == Stock.Product_Id &&
@@ -150,11 +196,6 @@ else
         context.Stocks.Add(Stock);
         await context.SaveChangesAsync();
 
-        NavigationManager.NavigateTo($"/stocks?category_id={Category_Id}");
+        NavigationManager.NavigateTo(BackUrl);
     }
-
-    [SupplyParameterFromQuery]
-    private int Category_Id { get; set; }
-
-    private Category? SelectedCategory;
 }

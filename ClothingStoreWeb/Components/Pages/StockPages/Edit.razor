@@ -6,53 +6,92 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Редактирование</PageTitle>
+<PageTitle>Редактирование запаса</PageTitle>
 
-<h1>Редактирование</h1>
+<div class="stock-form-page">
+    <div class="stock-form-header">
+        <h1>Редактирование запаса</h1>
+        <p>
+            Измените количество товара на складе. Товар и размер не меняются на этой странице,
+            так как они определяют уникальную складскую запись.
+        </p>
+    </div>
 
-<h2>Запас</h2>
-<hr />
-@if (Stock is null)
-{
-    <p><em>Загрузка...</em></p>
-}
-else
-{
-    <div class="row">
-        <div class="col-md-4">
+    @if (Stock is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <div class="stock-form-card">
             <EditForm method="post" Model="Stock" OnValidSubmit="UpdateStock" FormName="edit" Enhance>
                 <DataAnnotationsValidator />
-                <ValidationSummary role="alert"/>
-                <input type="hidden" name="Stock.Stock_Id" value="@Stock.Stock_Id" />
-                <dl class="row">
-                    <dt class="col-sm-4">Товар</dt>
-                    <dd class="col-sm-8">@Stock.Product?.Product_Name</dd>
+                <ValidationSummary class="text-danger" role="alert" />
 
-                    <dt class="col-sm-4">Размер</dt>
-                    <dd class="col-sm-8">@Stock.Size?.Size_Name</dd>
-                </dl>
-                <div class="mb-3">
-                <span class="text-danger">*</span>
-                    <label for="stock_quantity" class="form-label">Количество на складе:</label>
-                    <InputNumber id="stock_quantity" @bind-Value="Stock.Stock_Quantity" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректное количество на складе"/>
+                <input type="hidden" name="Stock.Stock_Id" value="@Stock.Stock_Id" />
+                <input type="hidden" name="Stock.Product_Id" value="@Stock.Product_Id" />
+                <input type="hidden" name="Stock.Size_Id" value="@Stock.Size_Id" />
+
+                @if (!string.IsNullOrWhiteSpace(editError))
+                {
+                    <div class="stock-form-alert">
+                        @editError
+                    </div>
+                }
+
+                <div class="stock-form-info">
+                    <div class="stock-form-info-row">
+                        <span>Товар</span>
+                        <strong>@Stock.Product?.Product_Name</strong>
+                    </div>
+
+                    <div class="stock-form-info-row">
+                        <span>Размер</span>
+                        <strong>@Stock.Size?.Size_Name</strong>
+                    </div>
+                </div>
+
+                <div class="stock-form-group">
+                    <label for="stock_quantity">Количество на складе <span>*</span></label>
+
+                    <InputNumber id="stock_quantity"
+                                 @bind-Value="Stock.Stock_Quantity"
+                                 class="stock-form-control"
+                                 min="0"
+                                 ParsingErrorMessage="Введите корректное количество на складе" />
+
                     <ValidationMessage For="() => Stock.Stock_Quantity" class="text-danger" />
                 </div>
-                <button type="submit" class="btn btn-primary">Сохранить</button>
+
+                <div class="stock-form-actions">
+                    <button type="submit" class="stock-button stock-button-primary">
+                        Сохранить изменения
+                    </button>
+
+                    <a class="stock-button" href="@BackUrl">
+                        Отмена
+                    </a>
+                </div>
             </EditForm>
         </div>
-    </div>
-}
-
-<div>
-    <a href="@BackUrl">Вернуться к списку</a>
+    }
 </div>
 
 @code {
     [SupplyParameterFromQuery]
     private int Stock_Id { get; set; }
 
+    [SupplyParameterFromQuery]
+    private int? Category_Id { get; set; }
+
     [SupplyParameterFromForm]
     private Stock? Stock { get; set; }
+
+    private string? editError;
+
+    private string BackUrl => Category_Id is null or 0
+        ? "/stocks"
+        : $"/stocks?category_id={Category_Id}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -62,12 +101,12 @@ else
             return;
         }
 
-        using var context = DbFactory.CreateDbContext();
+        await using var context = await DbFactory.CreateDbContextAsync();
 
         Stock ??= await context.Stocks
-            .Include(s => s.Product)
-            .Include(s => s.Size)
-            .FirstOrDefaultAsync(m => m.Stock_Id == Stock_Id);
+            .Include(stock => stock.Product)
+            .Include(stock => stock.Size)
+            .FirstOrDefaultAsync(stock => stock.Stock_Id == Stock_Id);
 
         if (Stock is null)
         {
@@ -82,10 +121,18 @@ else
             return;
         }
 
-        using var context = DbFactory.CreateDbContext();
+        editError = null;
+
+        if (Stock.Stock_Quantity < 0)
+        {
+            editError = "Количество на складе не может быть отрицательным.";
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
 
         var stockFromDb = await context.Stocks
-            .FirstOrDefaultAsync(s => s.Stock_Id == Stock.Stock_Id);
+            .FirstOrDefaultAsync(stock => stock.Stock_Id == Stock.Stock_Id);
 
         if (stockFromDb is null)
         {
@@ -101,7 +148,7 @@ else
         }
         catch (DbUpdateConcurrencyException)
         {
-            if (!StockExists(Stock.Stock_Id))
+            if (!await StockExistsAsync(Stock.Stock_Id))
             {
                 NavigationManager.NavigateTo("notfound");
                 return;
@@ -113,16 +160,9 @@ else
         NavigationManager.NavigateTo(BackUrl);
     }
 
-    private bool StockExists(int stock_id)
+    private async Task<bool> StockExistsAsync(int stockId)
     {
-        using var context = DbFactory.CreateDbContext();
-        return context.Stocks.Any(e => e.Stock_Id == stock_id);
+        await using var context = await DbFactory.CreateDbContextAsync();
+        return await context.Stocks.AnyAsync(stock => stock.Stock_Id == stockId);
     }
-
-    [SupplyParameterFromQuery]
-    private int? Category_Id { get; set; }
-
-    private string BackUrl => Category_Id is null or 0
-        ? "/stocks"
-        : $"/stocks?category_id={Category_Id}";
 }

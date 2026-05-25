@@ -13,6 +13,7 @@ namespace ClothingStoreWeb.Data
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Employee> Employees { get; set; }
+        public DbSet<HomeBanner> HomeBanners { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -25,6 +26,7 @@ namespace ClothingStoreWeb.Data
             builder.Entity<Order>().ToTable("Orders");
             builder.Entity<OrderItem>().ToTable("OrderItems");
             builder.Entity<Employee>().ToTable("Employees");
+            builder.Entity<HomeBanner>().ToTable("HomeBanners");
 
             builder.Entity<Order>()
                 .Property(o => o.Order_TotalAmount)
@@ -88,6 +90,38 @@ namespace ClothingStoreWeb.Data
             builder.Entity<Employee>()
                 .HasIndex(e => e.User_Id)
                 .IsUnique();
+
+            builder.Entity<HomeBanner>()
+                .Property(b => b.HomeBanner_Type)
+                .HasMaxLength(30);
+
+            builder.Entity<HomeBanner>()
+                .Property(b => b.HomeBanner_Label)
+                .HasMaxLength(100);
+
+            builder.Entity<HomeBanner>()
+                .Property(b => b.HomeBanner_Title)
+                .HasMaxLength(150);
+
+            builder.Entity<HomeBanner>()
+                .Property(b => b.HomeBanner_Description)
+                .HasMaxLength(500);
+
+            builder.Entity<HomeBanner>()
+                .Property(b => b.HomeBanner_ButtonText)
+                .HasMaxLength(80);
+
+            builder.Entity<HomeBanner>()
+                .Property(b => b.HomeBanner_ButtonUrl)
+                .HasMaxLength(300);
+
+            builder.Entity<HomeBanner>()
+                .Property(b => b.HomeBanner_ImagePath)
+                .HasMaxLength(500);
+
+            builder.Entity<HomeBanner>()
+                .Property(b => b.HomeBanner_CreatedAt)
+                .HasDefaultValueSql("SYSDATETIME()");
         }
     }
 }

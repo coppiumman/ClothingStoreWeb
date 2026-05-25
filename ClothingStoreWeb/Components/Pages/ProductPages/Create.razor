@@ -8,12 +8,17 @@
 @inject IWebHostEnvironment Environment
 @using Microsoft.AspNetCore.Components.Forms
 
-<PageTitle>Добавление</PageTitle>
+<PageTitle>Добавление товара</PageTitle>
 
-<h1>Добавление</h1>
-
-<h2>Товар</h2>
-<hr />
+<div class="product-form-header">
+    <div>
+        <h1>Добавление товара</h1>
+        <p>
+            Заполните основные данные товара, выберите категорию, укажите цену,
+            цвет и загрузите изображения для карточки товара.
+        </p>
+    </div>
+</div>
 @if (Product is null)
 {
     <p><em>Загрузка...</em></p>
@@ -27,7 +32,7 @@ else
 
                 <div class="product-edit-layout">
                     <div class="product-edit-fields">
-                        <div class="mb-3">
+                    <div class="product-field">
                             <label for="category_id" class="form-label">Категория</label>
                             <InputSelect id="category_id" @bind-Value="Product.Category_Id" class="form-control" aria-required="true">
                                 <option value="0">Выберите категорию</option>
@@ -39,36 +44,48 @@ else
                             <ValidationMessage For="() => Product.Category_Id" class="text-danger" />
                         </div>
 
-                        <div class="mb-3">
+                    <div class="product-field">
                             <span class="text-danger">*</span>
                             <label for="product_name" class="form-label">Название товара:</label>
                             <InputText id="product_name" @bind-Value="Product.Product_Name" class="form-control" aria-required="true" />
                             <ValidationMessage For="() => Product.Product_Name" class="text-danger" />
                         </div>
 
-                        <div class="mb-3">
-                            <label for="product_description" class="form-label">Описание товара:</label>
-                            <InputText id="product_description" @bind-Value="Product.Product_Description" class="form-control" />
-                            <ValidationMessage For="() => Product.Product_Description" class="text-danger" />
-                        </div>
+                    <div class="product-field">
+                        <label for="product_description">
+                            Описание товара
+                        </label>
 
-                        <div class="mb-3">
+                        <InputTextArea id="product_description"
+                                       @bind-Value="Product.Product_Description"
+                                       class="form-control product-description-textarea"
+                                       rows="7"
+                                       placeholder="Введите подробное описание товара" />
+
+                        <ValidationMessage For="() => Product.Product_Description" class="text-danger" />
+                    </div>
+
+                        <div class="product-field">
                             <span class="text-danger">*</span>
                             <label for="product_price" class="form-label">Цена:</label>
                             <InputNumber id="product_price" @bind-Value="Product.Product_Price" class="form-control" aria-required="true" ParsingErrorMessage="Введите корректную цену" />
                             <ValidationMessage For="() => Product.Product_Price" class="text-danger" />
                         </div>
 
-                        <div class="mb-3">
+                        <div class="product-field">
                             <label for="product_coloring" class="form-label">Цвет:</label>
                             <InputText id="product_coloring" @bind-Value="Product.Product_Coloring" class="form-control" />
                             <ValidationMessage For="() => Product.Product_Coloring" class="text-danger" />
                         </div>
 
-                        <button type="submit" class="btn btn-primary">Добавить</button>
+                        <div class="product-form-actions">
+                            <button type="submit" class="product-submit-button">
+                                Добавить товар
+                            </button>
 
-                        <div class="mt-2">
-                            <a href="/products">Вернуться к списку</a>
+                            <a class="product-secondary-button" href="/products">
+                                Отмена
+                            </a>
                         </div>
                     </div>
 
@@ -189,10 +206,6 @@ else
             </EditForm>
     </div>
 }
-
-<div>
-    <a href="/products">Вернуться к списку</a>
-</div>
 
 @code {
     [SupplyParameterFromForm]

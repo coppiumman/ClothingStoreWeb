@@ -16,72 +16,145 @@
 
 <PageTitle>Запасы</PageTitle>
 
-<h1>Запасы</h1>
+<div class="stocks-page">
+    <div class="stocks-header">
+        <div>
+            <h1>Запасы</h1>
 
-<div class="mb-3">
-    <button type="button"
-            class="btn btn-outline-success"
-            @onclick="ExportStocksToExcelAsync">
-        Экспорт в Excel
-    </button>
-</div>
+            @if (SelectedCategory is null)
+            {
+                <p>
+                    В разделе отображаются складские остатки товаров по категориям, товарам и размерам.
+                    Для начала выберите категорию, после чего можно будет просмотреть и изменить остатки
+                    конкретных товаров.
+                </p>
+            }
+            else
+            {
+                <p>
+                    Управление складскими остатками выбранной категории. Здесь можно добавить новый запас,
+                    изменить количество товара на складе, просмотреть подробности или удалить запись, если она
+                    не используется в заказах.
+                </p>
+            }
+        </div>
 
-@if (SelectedCategory is null)
-{
-    <p>Выберите категорию, чтобы посмотреть запасы товаров.</p>
+        <div class="stocks-header-actions">
+            <button type="button"
+                    class="stocks-button stocks-button-secondary"
+                    @onclick="ExportStocksToExcelAsync">
+                Экспорт в Excel
+            </button>
 
-    <QuickGrid Class="table" Items="categories">
-        <PropertyColumn Property="category => category.Category_Name" Title="Категория" />
-        <PropertyColumn Property="category => category.Category_Description" Title="Описание" />
+            @if (SelectedCategory is not null && canCreate)
+            {
+                <a class="stocks-button stocks-button-primary"
+                   href="@($"/stocks/create?category_id={SelectedCategory.Category_Id}")">
+                    Добавить запас
+                </a>
+            }
+        </div>
+    </div>
 
-        <TemplateColumn Context="category">
-            <a href="@($"/stocks?category_id={category.Category_Id}")">Открыть запасы</a>
-        </TemplateColumn>
-    </QuickGrid>
-}
-else
-{
-    <h2>@SelectedCategory.Category_Name</h2>
-
-    <p>
-        <a href="/stocks">Вернуться к категориям</a>
-    </p>
-
-    @if (canCreate)
+    @if (SelectedCategory is null)
     {
-        <p>
-            <a href="@($"/stocks/create?category_id={SelectedCategory.Category_Id}")">Добавить запас</a>
-        </p>
+        <div class="stocks-info">
+            Выберите категорию, чтобы открыть список остатков товаров по размерам.
+        </div>
+
+        <div class="stocks-table-card">
+            <QuickGrid Class="stocks-table" Items="categories">
+                <PropertyColumn Property="category => category.Category_Name" Title="Категория" />
+                <PropertyColumn Property="category => category.Category_Description" Title="Описание" />
+
+                <TemplateColumn Title="Действия" Context="category">
+                    <div class="stocks-actions">
+                        <a class="stocks-action-button"
+                           href="@($"/stocks?category_id={category.Category_Id}")">
+                            Открыть запасы
+                        </a>
+                    </div>
+                </TemplateColumn>
+            </QuickGrid>
+        </div>
     }
+    else
+    {
+        <div class="stocks-category-panel">
+            <div>
+                <span>Выбранная категория</span>
+                <strong>@SelectedCategory.Category_Name</strong>
+            </div>
 
-    <QuickGrid Class="table" Items="stocks">
-        <TemplateColumn Title="Товар">
-            @context.Product?.Product_Name
-        </TemplateColumn>
+            <a class="stocks-button" href="/stocks">
+                Вернуться к категориям
+            </a>
+        </div>
 
-        <TemplateColumn Title="Размер">
-            @context.Size?.Size_Name
-        </TemplateColumn>
+        @if (!stocks.Any())
+        {
+            <div class="stocks-info">
+                Для выбранной категории пока нет складских записей.
+            </div>
+        }
+        else
+        {
+            <div class="stocks-table-card">
+                <QuickGrid Class="stocks-table" Items="stocks">
+                    <TemplateColumn Title="Товар">
+                        @context.Product?.Product_Name
+                    </TemplateColumn>
 
-        <PropertyColumn Property="stock => stock.Stock_Quantity" Title="Количество на складе" />
+                    <TemplateColumn Title="Размер">
+                        @context.Size?.Size_Name
+                    </TemplateColumn>
 
-        <TemplateColumn Context="stock">
-            @if (canEdit)
-            {
-                <a href="@($"/stocks/edit?stock_id={stock.Stock_Id}&category_id={SelectedCategory.Category_Id}")">Изменить</a>
-                <span> | </span>
-            }
+                    <PropertyColumn Property="stock => stock.Stock_Quantity" Title="Количество на складе" />
 
-            <a href="@($"/stocks/details?stock_id={stock.Stock_Id}&category_id={SelectedCategory.Category_Id}")">Подробнее</a>
+                    <TemplateColumn Title="Статус" Context="stock">
+                        @if (stock.Stock_Quantity == 0)
+                        {
+                            <span class="stocks-status stocks-status-empty">Нет в наличии</span>
+                        }
+                        else if (stock.Stock_Quantity <= 3)
+                        {
+                            <span class="stocks-status stocks-status-low">Мало</span>
+                        }
+                        else
+                        {
+                            <span class="stocks-status stocks-status-normal">В наличии</span>
+                        }
+                    </TemplateColumn>
 
-            @if (isAdmin && canDelete)
-            {
-                <span> | </span>
-                <a href="@($"/stocks/delete?stock_id={stock.Stock_Id}&category_id={SelectedCategory.Category_Id}")">Удалить</a>
-            }
-        </TemplateColumn>
-    </QuickGrid>
-}
+                    <TemplateColumn Title="Действия" Context="stock">
+                        <div class="stocks-actions">
+                            @if (canEdit)
+                            {
+                                <a class="stocks-action-button"
+                                   href="@($"/stocks/edit?stock_id={stock.Stock_Id}&category_id={SelectedCategory.Category_Id}")">
+                                    Изменить
+                                </a>
+                            }
+
+                            <a class="stocks-action-button"
+                               href="@($"/stocks/details?stock_id={stock.Stock_Id}&category_id={SelectedCategory.Category_Id}")">
+                                Подробнее
+                            </a>
+
+                            @if (isAdmin && canDelete)
+                            {
+                                <a class="stocks-action-button stocks-action-danger"
+                                   href="@($"/stocks/delete?stock_id={stock.Stock_Id}&category_id={SelectedCategory.Category_Id}")">
+                                    Удалить
+                                </a>
+                            }
+                        </div>
+                    </TemplateColumn>
+                </QuickGrid>
+            </div>
+        }
+    }
+</div>
 
 @code {
     [SupplyParameterFromQuery]
@@ -153,8 +226,8 @@ else
             .Include(stock => stock.Size)
             .AsNoTracking()
             .Where(stock => stock.Product != null && stock.Product.Category_Id == Category_Id)
-            .OrderBy(stock => stock.Product!.Product_Name)
-            .ThenBy(stock => stock.Size!.Size_Name);
+            .OrderBy(stock => stock.Product != null ? stock.Product.Product_Name : "")
+            .ThenBy(stock => stock.Size != null ? stock.Size.Size_Name : "");
     }
 
     public async ValueTask DisposeAsync()
@@ -190,11 +263,21 @@ else
                 .ThenInclude(product => product!.Category)
             .Include(stock => stock.Size)
             .AsNoTracking()
-            .OrderBy(stock => stock.Product!.Category!.Category_DisplayOrder)
-            .ThenBy(stock => stock.Product!.Category!.Category_Name)
-            .ThenBy(stock => stock.Product!.Product_DisplayOrder)
-            .ThenBy(stock => stock.Product!.Product_Name)
-            .ThenBy(stock => stock.Size!.Size_Name)
+            .OrderBy(stock => stock.Product != null && stock.Product.Category != null
+                ? stock.Product.Category.Category_DisplayOrder
+                : 0)
+            .ThenBy(stock => stock.Product != null && stock.Product.Category != null
+                ? stock.Product.Category.Category_Name
+                : "")
+            .ThenBy(stock => stock.Product != null
+                ? stock.Product.Product_DisplayOrder
+                : 0)
+            .ThenBy(stock => stock.Product != null
+                ? stock.Product.Product_Name
+                : "")
+            .ThenBy(stock => stock.Size != null
+                ? stock.Size.Size_Name
+                : "")
             .ToListAsync();
 
         using var workbook = new XLWorkbook();

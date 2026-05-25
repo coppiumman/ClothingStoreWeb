@@ -8,39 +8,67 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager NavigationManager
 
-<PageTitle>Удаление</PageTitle>
+<PageTitle>Удаление сотрудника</PageTitle>
 
-<h1>Удаление</h1>
+<div class="employee-delete-page">
+    <div class="employee-delete-header">
+        <h1>Удаление сотрудника</h1>
+        <p>
+            Перед удалением проверьте выбранного сотрудника. После удаления записи пользователь
+            потеряет роль сотрудника и не сможет работать со служебными функциями приложения.
+        </p>
+    </div>
 
-<p>Вы уверены, что хотите удалить этот элемент?</p>
-<div>
-    <h2>Сотрудник</h2>
-    <hr />
     @if (employee is null)
     {
         <p><em>Загрузка...</em></p>
     }
-    else {
-        <dl class="row">
-            <dt class="col-sm-2">Пользователь</dt>
-            <dd class="col-sm-10">@GetUserDisplayName(employee.User)</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Должность</dt>
-            <dd class="col-sm-10">@employee.Employee_Position</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Зарплата</dt>
-            <dd class="col-sm-10">@employee.Employee_Salary</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Дата приёма на работу</dt>
-            <dd class="col-sm-10">@employee.Employee_HireDate</dd>
-        </dl>
-        <EditForm method="post" Model="employee" OnValidSubmit="DeleteEmployee" FormName="delete" Enhance>
-            <button type="submit" class="btn btn-danger" disabled="@(employee is null)">Удалить</button> |
-            <a href="/employees">Вернуться к списку</a>
-        </EditForm>
+    else
+    {
+        <div class="employee-delete-card">
+            <div class="employee-delete-warning">
+                Вы действительно хотите удалить этого сотрудника?
+            </div>
+
+            <div class="employee-delete-row">
+                <span>Пользователь</span>
+                <strong>@GetUserDisplayName(employee.User)</strong>
+            </div>
+
+            <div class="employee-delete-row">
+                <span>Email</span>
+                <strong>@DisplayValue(employee.User?.Email)</strong>
+            </div>
+
+            <div class="employee-delete-row">
+                <span>Должность</span>
+                <strong>@employee.Employee_Position</strong>
+            </div>
+
+            <div class="employee-delete-row">
+                <span>Зарплата</span>
+                <strong>@employee.Employee_Salary.ToString("N2") ₽</strong>
+            </div>
+
+            <div class="employee-delete-row">
+                <span>Дата приёма</span>
+                <strong>@employee.Employee_HireDate.ToString("dd.MM.yyyy")</strong>
+            </div>
+
+            <EditForm method="post" Model="employee" OnValidSubmit="DeleteEmployee" FormName="delete" Enhance>
+                <div class="employee-delete-actions">
+                    <button type="submit"
+                            class="employee-button employee-button-danger"
+                            disabled="@(employee is null)">
+                        Удалить сотрудника
+                    </button>
+
+                    <a class="employee-button" href="/employees">
+                        Отмена
+                    </a>
+                </div>
+            </EditForm>
+        </div>
     }
 </div>
 
@@ -48,6 +76,7 @@
     private Employee? employee;
 
     private const string EmployeeRoleName = "Сотрудник";
+    private const string AdministratorRoleName = "Администратор";
 
     [SupplyParameterFromQuery]
     private int Employee_Id { get; set; }
@@ -55,6 +84,7 @@
     protected override async Task OnInitializedAsync()
     {
         using var context = DbFactory.CreateDbContext();
+
         employee = await context.Employees
             .Include(e => e.User)
             .FirstOrDefaultAsync(m => m.Employee_Id == Employee_Id);
@@ -62,30 +92,67 @@
         if (employee is null)
         {
             NavigationManager.NavigateTo("notfound");
+            return;
         }
+
+        if (employee.User is not null &&
+            await UserManager.IsInRoleAsync(employee.User, AdministratorRoleName))
+        {
+            NavigationManager.NavigateTo("/employees", replace: true);
+            return;
+        }
+    }
+
+    private static string DisplayValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "Не указано" : value;
     }
 
     private static string GetUserDisplayName(ApplicationUser? user)
     {
         if (user is null)
-            return "";
+        {
+            return "Пользователь не найден";
+        }
 
         if (!string.IsNullOrWhiteSpace(user.UserFullName))
+        {
             return user.UserFullName;
+        }
 
         if (!string.IsNullOrWhiteSpace(user.Email))
+        {
             return user.Email;
+        }
 
         return user.Id;
     }
 
     private async Task DeleteEmployee()
     {
+        if (employee is null)
+        {
+            return;
+        }
+
         using var context = DbFactory.CreateDbContext();
-        context.Employees.Remove(employee!);
+
+        var employeeFromDb = await context.Employees
+            .FirstOrDefaultAsync(e => e.Employee_Id == employee.Employee_Id);
+
+        if (employeeFromDb is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        var userId = employeeFromDb.User_Id;
+
+        context.Employees.Remove(employeeFromDb);
         await context.SaveChangesAsync();
 
-        var user = await UserManager.FindByIdAsync(employee!.User_Id);
+        var user = await UserManager.FindByIdAsync(userId);
+
         if (user is not null && await UserManager.IsInRoleAsync(user, EmployeeRoleName))
         {
             await UserManager.RemoveFromRoleAsync(user, EmployeeRoleName);

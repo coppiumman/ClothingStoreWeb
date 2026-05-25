@@ -1,0 +1,143 @@
+.sizes-page {
+    max-width: 1200px;
+}
+
+.sizes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+    .sizes-header h1 {
+        margin: 0 0 8px;
+        font-size: 34px;
+        font-weight: 400;
+    }
+
+    .sizes-header p {
+        max-width: 720px;
+        margin: 0;
+        color: #666666;
+        line-height: 1.5;
+    }
+
+.sizes-header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.sizes-button,
+.sizes-action-button {
+    min-height: 34px;
+    padding: 8px 16px;
+    border: 1px solid #d7d7d7;
+    background: #ffffff;
+    color: #1f1f1f;
+    font-size: 14px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+    .sizes-button:hover,
+    .sizes-action-button:hover {
+        background: #f5f5f5;
+        color: #1f1f1f;
+        text-decoration: none;
+    }
+
+.sizes-button-primary {
+    background: #171717;
+    border-color: #171717;
+    color: #ffffff;
+}
+
+    .sizes-button-primary:hover {
+        background: #2a2a2a;
+        color: #ffffff;
+    }
+
+.sizes-button-secondary {
+    background: #ffffff;
+}
+
+.sizes-table-card {
+    background: #ffffff;
+    border: 1px solid #e4e4e4;
+    overflow-x: auto;
+}
+
+::deep .sizes-table {
+    width: 100%;
+    min-width: 720px;
+    margin: 0;
+    border-collapse: collapse;
+}
+
+    ::deep .sizes-table th {
+        background: #f7f7f7;
+        color: #1f1f1f;
+        font-weight: 600;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e4e4e4;
+        white-space: nowrap;
+    }
+
+    ::deep .sizes-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #eeeeee;
+        vertical-align: middle;
+    }
+
+        ::deep .sizes-table th:nth-child(2),
+        ::deep .sizes-table td:nth-child(2) {
+            width: 360px;
+        }
+
+.sizes-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+
+.sizes-action-danger {
+    color: #a22626;
+    border-color: #e1b5b5;
+}
+
+    .sizes-action-danger:hover {
+        background: #fff3f3;
+        color: #8f1f1f;
+    }
+
+@media (max-width: 640.98px) {
+    .sizes-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+        .sizes-header h1 {
+            font-size: 28px;
+        }
+
+    .sizes-header-actions {
+        justify-content: flex-start;
+    }
+
+    .sizes-button {
+        width: 100%;
+    }
+
+    .sizes-table-card {
+        -webkit-overflow-scrolling: touch;
+    }
+}

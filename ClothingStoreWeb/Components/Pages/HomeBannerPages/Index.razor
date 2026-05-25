@@ -1,0 +1,239 @@
+@page "/homebanners"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@using Microsoft.EntityFrameworkCore
+@using ClothingStoreWeb.Data
+@using ClothingStoreWeb.Models
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject EmployeeAccessService AccessService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Баннеры главной</PageTitle>
+
+<div class="homebanners-page">
+    <div class="homebanners-header">
+        <div>
+            <h1>Баннеры главной страницы</h1>
+            <p>
+                В этом разделе можно управлять баннерами и промо-блоками, которые отображаются
+                на главной странице интернет-магазина.
+            </p>
+        </div>
+
+        @if (canCreateHomeBanners)
+        {
+            <a class="homebanners-button homebanners-button-primary" href="/homebanners/create">
+                Добавить баннер
+            </a>
+        }
+    </div>
+
+    @if (!canViewHomeBanners)
+    {
+        <p><em>Проверка доступа...</em></p>
+    }
+    else if (homeBanners.Count == 0)
+    {
+        <div class="homebanners-empty">
+            Баннеры ещё не добавлены.
+        </div>
+    }
+    else
+    {
+        <div class="homebanners-table-card">
+            <table class="homebanners-table">
+                <thead>
+                    <tr>
+                        <th>Тип</th>
+                        <th>Заголовок</th>
+                        <th>Подпись</th>
+                        <th>Кнопка</th>
+                        <th>Ссылка</th>
+                        <th>Порядок</th>
+                        <th>Статус</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var banner in homeBanners)
+                    {
+                        <tr>
+                            <td>
+                                <span class="homebanners-type">
+                                    @GetBannerTypeName(banner.HomeBanner_Type)
+                                </span>
+                            </td>
+
+                            <td>
+                                <strong>@banner.HomeBanner_Title</strong>
+
+                                @if (!string.IsNullOrWhiteSpace(banner.HomeBanner_Description))
+                                {
+                                    <div class="homebanners-description">
+                                        @banner.HomeBanner_Description
+                                    </div>
+                                }
+                            </td>
+
+                            <td>
+                                @DisplayValue(banner.HomeBanner_Label)
+                            </td>
+
+                            <td>
+                                @DisplayValue(banner.HomeBanner_ButtonText)
+                            </td>
+
+                            <td>
+                                @GetLinkDisplayName(banner.HomeBanner_ButtonUrl)
+                            </td>
+
+                            <td>
+                                @banner.HomeBanner_DisplayOrder
+                            </td>
+
+                            <td>
+                                @if (banner.HomeBanner_IsHidden)
+                                {
+                                    <span class="homebanners-status homebanners-status-hidden">
+                                        Скрыт
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="homebanners-status homebanners-status-visible">
+                                        Отображается
+                                    </span>
+                                }
+                            </td>
+
+                            <td>
+                                <div class="homebanners-actions">
+                                    @if (canEditHomeBanners)
+                                    {
+                                        <a class="homebanners-action-button"
+                                           href="@($"/homebanners/edit?homebanner_id={banner.HomeBanner_Id}")">
+                                            Изменить
+                                        </a>
+                                    }
+
+                                    <a class="homebanners-action-button"
+                                       href="@($"/homebanners/details?homebanner_id={banner.HomeBanner_Id}")">
+                                        Подробнее
+                                    </a>
+
+                                    @if (canDeleteHomeBanners)
+                                    {
+                                        <a class="homebanners-action-button homebanners-action-danger"
+                                           href="@($"/homebanners/delete?homebanner_id={banner.HomeBanner_Id}")">
+                                            Удалить
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private bool canViewHomeBanners;
+    private bool canCreateHomeBanners;
+    private bool canEditHomeBanners;
+    private bool canDeleteHomeBanners;
+
+    private List<HomeBanner> homeBanners = new();
+    private Dictionary<int, string> productNamesById = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        canViewHomeBanners = await AccessService.CanViewAsync("HomeBanners");
+        canCreateHomeBanners = await AccessService.CanCreateAsync("HomeBanners");
+        canEditHomeBanners = await AccessService.CanEditAsync("HomeBanners");
+        canDeleteHomeBanners = await AccessService.CanDeleteAsync("HomeBanners");
+
+        if (!canViewHomeBanners)
+        {
+            NavigationManager.NavigateTo("/Account/AccessDenied");
+            return;
+        }
+
+        await using var context = await DbFactory.CreateDbContextAsync();
+
+        homeBanners = await context.HomeBanners
+            .AsNoTracking()
+            .OrderBy(banner => banner.HomeBanner_Type)
+            .ThenBy(banner => banner.HomeBanner_DisplayOrder)
+            .ThenBy(banner => banner.HomeBanner_Id)
+            .ToListAsync();
+
+        productNamesById = await context.Products
+            .AsNoTracking()
+            .ToDictionaryAsync(
+                product => product.Product_Id,
+                product => product.Product_Name);
+    }
+
+    private static string GetBannerTypeName(string? type)
+    {
+        return type switch
+        {
+            "Hero" => "Главный баннер",
+            "NewProducts" => "Блок новинок",
+            "Poster" => "Промо-блок",
+            "HitProducts" => "Блок хитов",
+            _ => "Блок главной"
+        };
+    }
+
+    private static string DisplayValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "Не указано" : value;
+    }
+
+    private string GetLinkDisplayName(string? url)
+    {
+        if (TryGetProductIdFromUrl(url, out var productId))
+        {
+            return productNamesById.TryGetValue(productId, out var productName)
+                ? $"Товар: {productName}"
+                : $"Товар №{productId}";
+        }
+
+        return url switch
+        {
+            "/catalog" => "Каталог",
+            "/store" => "Главная страница",
+            "/cart" => "Корзина",
+            "/profile" => "Личный кабинет",
+            "/delivery" => "Доставка",
+            "/payment" => "Оплата",
+            "/returns" => "Возврат",
+            "/help" => "Помощь",
+            null or "" => "Не указано",
+            _ => url
+        };
+    }
+
+    private static bool TryGetProductIdFromUrl(string? url, out int productId)
+    {
+        productId = 0;
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        const string productUrlPrefix = "/catalog/product/";
+
+        if (!url.StartsWith(productUrlPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var idText = url[productUrlPrefix.Length..];
+
+        return int.TryParse(idText, out productId);
+    }
+}

@@ -1,5 +1,18 @@
 @page "/orders/edit"
 @attribute [Authorize(Roles = "Сотрудник,Администратор")]
+@inject NavigationManager NavigationManager
+
+<PageTitle>Редактирование заказа недоступно</PageTitle>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavigationManager.NavigateTo("/orders", replace: true);
+    }
+}
+
+@* @page "/orders/edit"
+@attribute [Authorize(Roles = "Сотрудник,Администратор")]
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
@@ -7,50 +20,84 @@
 @inject EmployeeAccessService AccessService
 @inject NavigationManager NavigationManager
 
-<PageTitle>Редактирование</PageTitle>
+<PageTitle>Редактирование заказа</PageTitle>
 
-<h1>Редактирование</h1>
+<div class="order-form-page">
+    <div class="order-form-header">
+        <h1>Редактирование заказа</h1>
+        <p>
+            Измените статус заказа и основные служебные данные. Если заказ уже закрыт,
+            его статус нельзя изменить вручную.
+        </p>
+    </div>
 
-<h2>Заказ</h2>
-<hr />
-@if (Order is null)
-{
-    <p><em>Загрузка...</em></p>
-}
-else
-{
-    <div class="row">
-        <div class="col-md-5">
+    @if (Order is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <div class="order-form-card">
             <EditForm method="post" Model="Order" OnValidSubmit="UpdateOrder" FormName="edit" Enhance>
                 <DataAnnotationsValidator />
-                <ValidationSummary role="alert" />
+                <ValidationSummary role="alert" class="text-danger" />
 
                 <input type="hidden" name="Order.Order_Id" value="@Order.Order_Id" />
 
-                <dl class="row">
-                    <dt class="col-sm-4">Номер заказа</dt>
-                    <dd class="col-sm-8">Заказ №@Order.Order_Id</dd>
+                @if (!string.IsNullOrWhiteSpace(statusChangeError))
+                {
+                    <div class="order-form-alert">
+                        @statusChangeError
+                    </div>
+                }
 
-                    <dt class="col-sm-4">Пользователь</dt>
-                    <dd class="col-sm-8">@GetUserDisplayName(Order.User)</dd>
+                <div class="order-form-info">
+                    <div class="order-form-info-row">
+                        <span>Номер заказа</span>
+                        <strong>Заказ №@Order.Order_Id</strong>
+                    </div>
 
-                    <dt class="col-sm-4">Дата заказа</dt>
-                    <dd class="col-sm-8">@Order.Order_Date.ToString("dd.MM.yyyy HH:mm")</dd>
+                    <div class="order-form-info-row">
+                        <span>Текущий статус</span>
+                        <strong>@GetOrderStatusName(Order.Order_Status)</strong>
+                    </div>
+                </div>
 
-                    <dt class="col-sm-4">Сумма заказа</dt>
-                    <dd class="col-sm-8">@Order.Order_TotalAmount.ToString("N2") ₽</dd>
+                <div class="order-form-group">
+                    <label for="user_id">Пользователь</label>
 
-                    <dt class="col-sm-4">Текущий статус</dt>
-                    <dd class="col-sm-8">@GetOrderStatusName(Order.Order_Status)</dd>
-                </dl>
+                    <InputSelect id="user_id"
+                                 @bind-Value="Order.User_Id"
+                                 class="order-form-control"
+                                 aria-required="true">
+                        <option value="">Выберите пользователя</option>
+                        @foreach (var user in Users)
+                        {
+                            <option value="@user.Id">@GetUserDisplayName(user)</option>
+                        }
+                    </InputSelect>
 
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="order_status" class="form-label">Новый статус:</label>
+                    <ValidationMessage For="() => Order.User_Id" class="text-danger" />
+                </div>
+
+                <div class="order-form-group">
+                    <label for="order_date">Дата заказа <span>*</span></label>
+
+                    <InputDate id="order_date"
+                               @bind-Value="Order.Order_Date"
+                               class="order-form-control"
+                               aria-required="true"
+                               ParsingErrorMessage="Введите корректную дату заказа" />
+
+                    <ValidationMessage For="() => Order.Order_Date" class="text-danger" />
+                </div>
+
+                <div class="order-form-group">
+                    <label for="order_status">Статус заказа <span>*</span></label>
 
                     <InputSelect id="order_status"
                                  @bind-Value="Order.Order_Status"
-                                 class="form-control"
+                                 class="order-form-control"
                                  aria-required="true"
                                  disabled="@isFinalStatus">
                         <option value="">Выберите статус</option>
@@ -64,29 +111,36 @@ else
 
                     @if (isFinalStatus)
                     {
-                        <div class="text-muted mt-1">
-                            Статус зафиксирован системой и недоступен для ручного изменения.
+                        <div class="order-form-note">
+                            Статус закрытого заказа зафиксирован и недоступен для ручного изменения.
                         </div>
                     }
                 </div>
 
-                @if (!string.IsNullOrWhiteSpace(statusChangeError))
-                {
-                    <div class="alert alert-danger">
-                        @statusChangeError
-                    </div>
-                }
+                <div class="order-form-group">
+                    <label for="order_totalamount">Сумма заказа <span>*</span></label>
 
-                <button type="submit" class="btn btn-primary" disabled="@isFinalStatus">
-                    Сохранить
-                </button>
+                    <InputNumber id="order_totalamount"
+                                 @bind-Value="Order.Order_TotalAmount"
+                                 class="order-form-control"
+                                 aria-required="true"
+                                 ParsingErrorMessage="Введите корректную сумму заказа" />
+
+                    <ValidationMessage For="() => Order.Order_TotalAmount" class="text-danger" />
+                </div>
+
+                <div class="order-form-actions">
+                    <button type="submit" class="order-button order-button-primary">
+                        Сохранить изменения
+                    </button>
+
+                    <a class="order-button" href="/orders">
+                        Отмена
+                    </a>
+                </div>
             </EditForm>
         </div>
-    </div>
-}
-
-<div>
-    <a href="/orders">Вернуться к списку</a>
+    }
 </div>
 
 @code {
@@ -144,17 +198,10 @@ else
             return;
         }
 
-        using var context = DbFactory.CreateDbContext();
+        await using var context = await DbFactory.CreateDbContextAsync();
+
         Order ??= await context.Orders
-            .Include(order => order.User)
             .FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
-
-        if (Order is not null)
-        {
-            Order.Order_Status = NormalizeStatus(Order.Order_Status);
-        }
-
-        Users = await context.Users.ToListAsync();
 
         if (Order is null)
         {
@@ -162,7 +209,13 @@ else
             return;
         }
 
+        Order.Order_Status = NormalizeStatus(Order.Order_Status);
         isFinalStatus = IsFinalStatus(Order.Order_Status);
+
+        Users = await context.Users
+            .OrderBy(user => user.UserFullName)
+            .ThenBy(user => user.Email)
+            .ToListAsync();
     }
 
     private static string GetUserDisplayName(ApplicationUser? user)
@@ -179,14 +232,31 @@ else
         return user.Id;
     }
 
+    private static string GetOrderStatusName(string? status)
+    {
+        return status switch
+        {
+            "new" => "Новый",
+            "confirmed" => "Подтверждён",
+            "paid" => "Оплачен",
+            "processing" => "В обработке",
+            "shipped" => "Отправлен",
+            "delivered" => "Доставлен",
+            "done" => "Завершён",
+            "cancelled" => "Отменён",
+            "returned" => "Возврат",
+            _ => status ?? ""
+        };
+    }
+
     private async Task UpdateOrder()
     {
         if (Order is null)
-        {
             return;
-        }
 
-        using var context = DbFactory.CreateDbContext();
+        statusChangeError = null;
+
+        await using var context = await DbFactory.CreateDbContextAsync();
 
         var orderFromDb = await context.Orders
             .Include(o => o.OrderItems)
@@ -214,9 +284,9 @@ else
             foreach (var orderItem in orderFromDb.OrderItems)
             {
                 var stock = await context.Stocks
-                    .FirstOrDefaultAsync(s =>
-                        s.Product_Id == orderItem.Product_Id &&
-                        s.Size_Id == orderItem.Size_Id);
+                    .FirstOrDefaultAsync(stock =>
+                        stock.Product_Id == orderItem.Product_Id &&
+                        stock.Size_Id == orderItem.Size_Id);
 
                 if (stock is not null)
                 {
@@ -225,51 +295,14 @@ else
             }
         }
 
-        if (oldStatus != newStatus)
-        {
-            orderFromDb.Order_StatusChangedAt = DateTime.Now;
-        }
-
+        orderFromDb.User_Id = Order.User_Id;
+        orderFromDb.Order_Date = Order.Order_Date;
         orderFromDb.Order_Status = newStatus;
+        orderFromDb.Order_TotalAmount = Order.Order_TotalAmount;
+        orderFromDb.Order_StatusChangedAt = DateTime.Now;
 
-        try
-        {
-            await context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!OrderExists(Order.Order_Id))
-            {
-                NavigationManager.NavigateTo("notfound");
-                return;
-            }
-
-            throw;
-        }
+        await context.SaveChangesAsync();
 
         NavigationManager.NavigateTo("/orders");
     }
-
-    private bool OrderExists(int order_id)
-    {
-        using var context = DbFactory.CreateDbContext();
-        return context.Orders.Any(e => e.Order_Id == order_id);
-    }
-
-    private static string GetOrderStatusName(string? status)
-    {
-        return status switch
-        {
-            "new" => "Новый",
-            "confirmed" => "Подтверждён",
-            "paid" => "Оплачен",
-            "processing" => "В обработке",
-            "shipped" => "Отправлен",
-            "delivered" => "Доставлен",
-            "done" => "Завершён",
-            "cancelled" => "Отменён",
-            "returned" => "Возврат",
-            _ => status ?? ""
-        };
-    }
-}
+} *@

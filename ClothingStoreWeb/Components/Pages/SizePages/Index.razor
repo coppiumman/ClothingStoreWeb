@@ -16,40 +16,60 @@
 
 <PageTitle>Размеры</PageTitle>
 
-<h1>Размеры</h1>
+<div class="sizes-page">
+    <div class="sizes-header">
+        <div>
+            <h1>Размеры</h1>
+            <p>
+                Управление справочником размеров одежды. Размеры используются при настройке
+                складских остатков, выборе размера товара покупателем и формировании заказов.
+            </p>
+        </div>
 
-<div class="mb-3">
-    <button type="button"
-            class="btn btn-outline-success"
-            @onclick="ExportSizesToExcelAsync">
-        Экспорт в Excel
-    </button>
+        <div class="sizes-header-actions">
+            <button type="button"
+                    class="sizes-button sizes-button-secondary"
+                    @onclick="ExportSizesToExcelAsync">
+                Экспорт в Excel
+            </button>
+
+            @if (canCreate)
+            {
+                <a class="sizes-button sizes-button-primary" href="sizes/create">
+                    Добавить размер
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="sizes-table-card">
+        <QuickGrid Class="sizes-table" Items="sizes">
+            <PropertyColumn Property="size => size.Size_Name" Title="Размер" />
+
+            <TemplateColumn Title="Действия" Context="size">
+                <div class="sizes-actions">
+                    @if (canEdit)
+                    {
+                        <a class="sizes-action-button" href="@($"sizes/edit?size_id={size.Size_Id}")">
+                            Изменить
+                        </a>
+                    }
+
+                    <a class="sizes-action-button" href="@($"sizes/details?size_id={size.Size_Id}")">
+                        Подробнее
+                    </a>
+
+                    @if (canDelete)
+                    {
+                        <a class="sizes-action-button sizes-action-danger" href="@($"sizes/delete?size_id={size.Size_Id}")">
+                            Удалить
+                        </a>
+                    }
+                </div>
+            </TemplateColumn>
+        </QuickGrid>
+    </div>
 </div>
-
-@if (canCreate)
-{
-    <p>
-        <a href="sizes/create">Добавить</a>
-    </p>
-}
-
-<QuickGrid Class="table" Items="sizes">
-    <PropertyColumn Property="size => size.Size_Name" Title="Размер" />
-
-    <TemplateColumn Context="size">
-        @if (canEdit)
-        {
-            <a href="@($"sizes/edit?size_id={size.Size_Id}")">Изменить</a>
-            <span> | </span>
-        }
-        <a href="@($"sizes/details?size_id={size.Size_Id}")">Подробнее</a>
-        @if (canDelete)
-        {
-            <span> | </span>
-            <a href="@($"sizes/delete?size_id={size.Size_Id}")">Удалить</a>
-        }
-    </TemplateColumn>
-</QuickGrid>
 
 @code {
     private ApplicationDbContext? context;
@@ -69,6 +89,7 @@
 
         canCreate = await AccessService.CanCreateAsync("Sizes");
         canEdit = await AccessService.CanEditAsync("Sizes");
+
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         isAdmin = authState.User.IsInRole("Администратор");
 

@@ -1,4 +1,5 @@
 .public-info-page {
+    width: 100%;
     max-width: 1180px;
     margin: 0 auto;
     padding: 32px 0 24px;
@@ -27,6 +28,7 @@
     color: #222222;
     font-size: 54px;
     font-weight: 400;
+    line-height: 1.15;
     letter-spacing: 0.14em;
     text-transform: uppercase;
 }
@@ -53,6 +55,7 @@
         color: #222222;
         font-size: 28px;
         font-weight: 400;
+        line-height: 1.25;
         letter-spacing: 0.08em;
         text-transform: uppercase;
     }
@@ -82,6 +85,7 @@
         color: #222222;
         font-size: 17px;
         font-weight: 500;
+        line-height: 1.35;
         letter-spacing: 0.06em;
         text-transform: uppercase;
     }
@@ -101,6 +105,7 @@
     padding: 24px;
     background: #f7f7f7;
     color: #333333;
+    line-height: 1.5;
 }
 
 .public-info-actions {
@@ -112,12 +117,18 @@
 }
 
 .public-info-button {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
     padding: 13px 30px;
     border: 1px solid #111111;
+    background: #ffffff;
     color: #111111;
+    text-align: center;
     text-decoration: none;
     font-size: 13px;
+    line-height: 1.35;
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }
@@ -133,6 +144,7 @@
     text-decoration: none;
     border-bottom: 1px solid #111111;
     font-size: 14px;
+    line-height: 1.35;
     letter-spacing: 0.08em;
     text-transform: uppercase;
 }
@@ -143,17 +155,33 @@
         text-decoration: none;
     }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+    .public-info-page {
+        max-width: 860px;
+        padding-top: 24px;
+    }
+
     .public-info-hero {
-        padding: 56px 36px;
+        min-height: 320px;
+        margin-bottom: 48px;
+        padding: 60px 44px;
     }
 
         .public-info-hero h1 {
-            font-size: 42px;
+            font-size: 44px;
         }
+
+    .public-info-content {
+        max-width: 760px;
+    }
 
     .public-info-cards {
         grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .public-info-card {
+        padding: 24px;
     }
 }
 
@@ -168,26 +196,99 @@
         padding: 42px 24px;
     }
 
-        .public-info-hero h1 {
-            font-size: 32px;
-            letter-spacing: 0.1em;
-        }
-
-        .public-info-hero p {
-            font-size: 16px;
-        }
-
-    .public-info-block h2 {
-        font-size: 23px;
+    .public-info-label {
+        margin-bottom: 14px;
+        font-size: 11px;
+        letter-spacing: 0.18em;
     }
+
+    .public-info-hero h1 {
+        margin-bottom: 18px;
+        font-size: 32px;
+        letter-spacing: 0.1em;
+    }
+
+    .public-info-hero p {
+        font-size: 16px;
+        line-height: 1.6;
+    }
+
+    .public-info-block {
+        margin-bottom: 38px;
+    }
+
+        .public-info-block h2 {
+            font-size: 23px;
+            letter-spacing: 0.06em;
+        }
+
+        .public-info-block p {
+            font-size: 15px;
+            line-height: 1.7;
+        }
 
     .public-info-card {
         padding: 22px;
     }
 
+        .public-info-card h3 {
+            font-size: 15px;
+        }
+
+        .public-info-card p {
+            font-size: 14px;
+        }
+
+    .public-info-contact {
+        padding: 20px;
+        font-size: 14px;
+    }
+
     .public-info-actions {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 18px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .public-info-button {
+        width: 100%;
+        padding-left: 18px;
+        padding-right: 18px;
+        font-size: 12px;
+    }
+
+    .public-info-link {
+        width: fit-content;
+        justify-self: center;
+        text-align: center;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 430px) {
+    .public-info-hero {
+        padding: 36px 18px;
+    }
+
+        .public-info-hero h1 {
+            font-size: 27px;
+            letter-spacing: 0.08em;
+        }
+
+        .public-info-hero p {
+            font-size: 15px;
+        }
+
+    .public-info-block h2 {
+        font-size: 20px;
+    }
+
+    .public-info-card {
+        padding: 18px;
+    }
+
+    .public-info-actions {
+        gap: 14px;
     }
 }

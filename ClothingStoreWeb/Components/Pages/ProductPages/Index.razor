@@ -18,149 +18,186 @@
 
 <PageTitle>Товары</PageTitle>
 
-<h1>Товары</h1>
+<div class="products-page">
+    <div class="products-header">
+        <div>
+            <h1>Товары</h1>
+            <p>
+                Управление товарами интернет-магазина: добавление, редактирование,
+                скрытие, изменение порядка отображения, импорт и экспорт через Excel.
+            </p>
+        </div>
 
-<div class="mb-3 d-flex gap-2 align-items-center flex-wrap">
-    <button type="button"
-            class="btn btn-outline-success"
-            @onclick="ExportProductsToExcelAsync">
-        Экспорт в Excel
-    </button>
+        <div class="products-header-actions">
+            <button type="button"
+                    class="products-button products-button-export"
+                    @onclick="ExportProductsToExcelAsync">
+                Экспорт в Excel
+            </button>
 
-    @if (canImport)
-    {
-        <label class="btn btn-outline-primary mb-0">
-            Импорт из Excel
-            <InputFile OnChange="ImportProductsFromExcelAsync"
-                       accept=".xlsx"
-                       style="display: none;" />
-        </label>
-    }
-</div>
-
-@if (!string.IsNullOrWhiteSpace(importResultMessage))
-{
-    <div class="alert @(importHasErrors ? "alert-warning" : "alert-success")">
-        @importResultMessage
-
-        @if (importMessages.Count > 0)
-        {
-            <ul class="mb-0 mt-2">
-                @foreach (var message in importMessages.Take(10))
-                {
-                    <li>@message</li>
-                }
-            </ul>
-        }
-    </div>
-}
-
-@if (canCreate)
-{
-    <p>
-        <a href="products/create">Добавить</a>
-    </p>
-}
-
-<div class="products-filter">
-    <label for="categoryFilter" class="form-label">Категория:</label>
-
-    <select id="categoryFilter"
-            class="form-select products-category-select"
-            @onchange="OnCategoryChanged">
-        <option value="">Все категории</option>
-
-        @foreach (var category in categories)
-        {
-            <option value="@category.Category_Id">
-                @category.Category_Name
-            </option>
-        }
-    </select>
-</div>
-
-@if (selectedCategoryId is null)
-{
-    <p class="text-muted products-order-hint">
-        Для изменения порядка товаров выберите конкретную категорию.
-    </p>
-}
-
-<div class="products-grid-wrapper">
-    <QuickGrid Class="table products-table" Items="products">
-    <TemplateColumn Title="Категория">
-        @context.Category?.Category_Name
-    </TemplateColumn>
-
-    <TemplateColumn Title="Изображение" Context="product">
-        <div class="product-list-image-box">
-            @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+            @if (canImport)
             {
-                <img src="@product.Product_ImagePath"
-                     alt="@product.Product_Name"
-                     class="product-list-image" />
+                <label class="products-button products-button-import">
+                    Импорт из Excel
+                    <InputFile OnChange="ImportProductsFromExcelAsync"
+                               accept=".xlsx"
+                               style="display: none;" />
+                </label>
             }
-            else
+
+            @if (canCreate)
             {
-                <span class="text-muted">Нет изображения</span>
+                <a class="products-button products-button-primary" href="products/create">
+                    Добавить товар
+                </a>
             }
         </div>
-    </TemplateColumn>
+    </div>
 
-    <PropertyColumn Property="product => product.Product_Name" Title="Название товара" />
-    <PropertyColumn Property="product => product.Product_Description" Title="Описание товара" />
-    <PropertyColumn Property="product => product.Product_Price" Title="Цена" />
-    <PropertyColumn Property="product => product.Product_Coloring" Title="Цвет" />
-    <PropertyColumn Property="product => product.Product_DisplayOrder" Title="Порядок" />
-        <TemplateColumn Title="Статус">
-            @(context.Product_IsHidden ? "Скрыт" : "Отображается")
-        </TemplateColumn>
+    @if (!string.IsNullOrWhiteSpace(importResultMessage))
+    {
+        <div class="products-import-message @(importHasErrors ? "products-import-warning" : "products-import-success")">
+            <div>@importResultMessage</div>
 
-    <TemplateColumn Title="Действия" Context="product">
-        @if (canEdit)
-        {
-                <span class="product-order-buttons"
-                      title="@(selectedCategoryId is null ? "Для изменения порядка выберите категорию" : null)">
-                    <button type="button"
-                            class="btn btn-sm btn-outline-secondary"
-                            disabled="@(selectedCategoryId is null)"
-                            @onclick="() => MoveProductUp(product.Product_Id)">
-                        ↑
-                    </button>
-
-                    <button type="button"
-                            class="btn btn-sm btn-outline-secondary"
-                            disabled="@(selectedCategoryId is null)"
-                            @onclick="() => MoveProductDown(product.Product_Id)">
-                        ↓
-                    </button>
-                </span>
-
-            <span> | </span>
-
-            <a href="@($"products/edit?product_id={product.Product_Id}")">Изменить</a>
-            <span> | </span>
-        }
-
-        <a href="@($"products/details?product_id={product.Product_Id}")">Подробнее</a>
-
-            @if (canEdit)
+            @if (importMessages.Count > 0)
             {
-                <span> | </span>
-                <button type="button"
-                        class="btn btn-link p-0 align-baseline"
-                        @onclick="() => ToggleProductHiddenAsync(product.Product_Id)">
-                    @(product.Product_IsHidden ? "Показать" : "Скрыть")
-                </button>
+                <ul>
+                    @foreach (var message in importMessages.Take(10))
+                    {
+                        <li>@message</li>
+                    }
+                </ul>
             }
+        </div>
+    }
 
-        @if (canDelete)
+    <div class="products-toolbar">
+        <div class="products-filter">
+            <label for="categoryFilter">Категория</label>
+
+            <select id="categoryFilter"
+                    class="products-category-select"
+                    @onchange="OnCategoryChanged">
+                <option value="">Все категории</option>
+
+                @foreach (var category in categories)
+                {
+                    <option value="@category.Category_Id">
+                        @category.Category_Name
+                    </option>
+                }
+            </select>
+        </div>
+
+        @if (selectedCategoryId is null)
         {
-            <span> | </span>
-            <a href="@($"products/delete?product_id={product.Product_Id}")">Удалить</a>
+            <div class="products-order-hint">
+                Для изменения порядка товаров выберите конкретную категорию.
+            </div>
         }
-    </TemplateColumn>
-    </QuickGrid>
+    </div>
+
+    <div class="products-table-card">
+        <QuickGrid Class="table products-table" Items="products">
+            <TemplateColumn Title="Категория" Context="product">
+                @product.Category?.Category_Name
+            </TemplateColumn>
+
+            <TemplateColumn Title="Изображение" Context="product">
+                <div class="product-list-image-box @(string.IsNullOrWhiteSpace(product.Product_ImagePath) ? "product-list-image-empty" : "product-list-image-loaded")">
+                    @if (!string.IsNullOrWhiteSpace(product.Product_ImagePath))
+                    {
+                        <img src="@product.Product_ImagePath"
+                             alt="@product.Product_Name"
+                             class="product-list-image" />
+                    }
+                    else
+                    {
+                        <span class="product-no-image">Нет изображения</span>
+                    }
+                </div>
+            </TemplateColumn>
+
+            <PropertyColumn Property="product => product.Product_Name" Title="Название товара" />
+            <TemplateColumn Title="Описание товара" Context="product">
+                <div class="product-description-preview"
+                     title="@product.Product_Description">
+                    @(string.IsNullOrWhiteSpace(product.Product_Description)
+                                        ? "Нет описания"
+                                        : product.Product_Description)
+                </div>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Цена" Context="product">
+                @product.Product_Price.ToString("N2") ₽
+            </TemplateColumn>
+
+            <TemplateColumn Title="Цвет" Context="product">
+                @(string.IsNullOrWhiteSpace(product.Product_Coloring) ? "Цвет не указан" : product.Product_Coloring)
+            </TemplateColumn>
+
+            <PropertyColumn Property="product => product.Product_DisplayOrder" Title="Порядок" />
+
+            <TemplateColumn Title="Статус" Context="product">
+                @if (product.Product_IsHidden)
+                {
+                    <span class="product-status product-status-hidden">Скрыт</span>
+                }
+                else
+                {
+                    <span class="product-status product-status-visible">Отображается</span>
+                }
+            </TemplateColumn>
+
+            <TemplateColumn Title="Действия" Context="product">
+                <div class="product-actions">
+                    @if (canEdit)
+                    {
+                        <span class="product-order-buttons"
+                              title="@(selectedCategoryId is null ? "Для изменения порядка выберите категорию" : null)">
+                            <button type="button"
+                                    class="product-icon-button"
+                                    disabled="@(selectedCategoryId is null)"
+                                    @onclick="() => MoveProductUp(product.Product_Id)">
+                                ↑
+                            </button>
+
+                            <button type="button"
+                                    class="product-icon-button"
+                                    disabled="@(selectedCategoryId is null)"
+                                    @onclick="() => MoveProductDown(product.Product_Id)">
+                                ↓
+                            </button>
+                        </span>
+
+                        <button type="button"
+                                class="product-small-button"
+                                @onclick="() => ToggleProductHiddenAsync(product.Product_Id)">
+                            @(product.Product_IsHidden ? "Показать" : "Скрыть")
+                        </button>
+
+                        <a class="product-action-button product-action-edit"
+                           href="@($"products/edit?product_id={product.Product_Id}")">
+                            Изменить
+                        </a>
+                    }
+
+                    <a class="product-action-button product-action-details"
+                       href="@($"products/details?product_id={product.Product_Id}")">
+                        Подробнее
+                    </a>
+
+                    @if (canDelete)
+                    {
+                        <a class="product-action-button product-action-delete"
+                           href="@($"products/delete?product_id={product.Product_Id}")">
+                            Удалить
+                        </a>
+                    }
+                </div>
+            </TemplateColumn>
+        </QuickGrid>
+    </div>
 </div>
 
 @code {

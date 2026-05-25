@@ -9,37 +9,72 @@
 
 <PageTitle>Отмена заказа</PageTitle>
 
-<h1>Отмена заказа</h1>
+<div class="order-cancel-page">
+    <div class="order-cancel-header">
+        <h1>Отмена заказа</h1>
+        <p>
+            Перед отменой проверьте выбранный заказ. При отмене заказа приложение возвращает
+            количество товаров на склад и меняет статус заказа на «Отменён».
+        </p>
+    </div>
 
-<p>Вы уверены, что хотите отменить этот заказ</p>
-<div>
-    <h2>Заказ</h2>
-    <hr />
     @if (order is null)
     {
         <p><em>Загрузка...</em></p>
     }
-    else {
-        <dl class="row">
-            <dt class="col-sm-2">Пользователь</dt>
-            <dd class="col-sm-10">@GetUserDisplayName(order.User)</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Дата заказа</dt>
-            <dd class="col-sm-10">@order.Order_Date</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Статус заказа</dt>
-            <dd class="col-sm-10">@GetOrderStatusName(order.Order_Status)</dd>
-        </dl>
-        <dl class="row">
-            <dt class="col-sm-2">Сумма заказа</dt>
-            <dd class="col-sm-10">@order.Order_TotalAmount</dd>
-        </dl>
-        <EditForm method="post" Model="order" OnValidSubmit="CancelOrder" FormName="cancel" Enhance>
-            <button type="submit" class="btn btn-danger">Отменить заказ</button>
-            <a href="/orders">Вернуться к списку</a>
-        </EditForm>
+    else
+    {
+        <div class="order-cancel-card">
+            <div class="order-cancel-warning">
+                Вы действительно хотите отменить этот заказ?
+            </div>
+
+            <div class="order-cancel-row">
+                <span>Номер заказа</span>
+                <strong>Заказ №@order.Order_Id</strong>
+            </div>
+
+            <div class="order-cancel-row">
+                <span>Пользователь</span>
+                <strong>@GetUserDisplayName(order.User)</strong>
+            </div>
+
+            <div class="order-cancel-row">
+                <span>Дата заказа</span>
+                <strong>@order.Order_Date.ToString("dd.MM.yyyy HH:mm")</strong>
+            </div>
+
+            <div class="order-cancel-row">
+                <span>Статус заказа</span>
+                <strong>@GetOrderStatusName(order.Order_Status)</strong>
+            </div>
+
+            <div class="order-cancel-row">
+                <span>Сумма заказа</span>
+                <strong>@order.Order_TotalAmount.ToString("N2") ₽</strong>
+            </div>
+
+            @if (!CanCancelOrder(order.Order_Status))
+            {
+                <div class="order-cancel-blocked">
+                    Этот заказ нельзя отменить, потому что он уже закрыт или находится в финальном статусе.
+                </div>
+            }
+
+            <EditForm method="post" Model="order" OnValidSubmit="CancelOrder" FormName="cancel" Enhance>
+                <div class="order-cancel-actions">
+                    <button type="submit"
+                            class="order-button order-button-danger"
+                            disabled="@(!CanCancelOrder(order.Order_Status))">
+                        Отменить заказ
+                    </button>
+
+                    <a class="order-button" href="/orders">
+                        Назад
+                    </a>
+                </div>
+            </EditForm>
+        </div>
     }
 </div>
 
@@ -51,15 +86,17 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (!await AccessService.CanEditAsync("Orders"))
+        if (!await AccessService.CanDeleteAsync("Orders"))
         {
-            NavigationManager.NavigateTo("/");
+            NavigationManager.NavigateTo("/Account/AccessDenied");
             return;
         }
 
-        using var context = DbFactory.CreateDbContext();
+        await using var context = await DbFactory.CreateDbContextAsync();
+
         order = await context.Orders
             .Include(o => o.User)
+            .AsNoTracking()
             .FirstOrDefaultAsync(m => m.Order_Id == Order_Id);
 
         if (order is null)
@@ -68,10 +105,18 @@
         }
     }
 
+    private static bool CanCancelOrder(string? status)
+    {
+        return status == "new" ||
+               status == "confirmed" ||
+               status == "paid" ||
+               status == "processing";
+    }
+
     private static string GetUserDisplayName(ApplicationUser? user)
     {
         if (user is null)
-            return "";
+            return "Пользователь не найден";
 
         if (!string.IsNullOrWhiteSpace(user.UserFullName))
             return user.UserFullName;
@@ -103,26 +148,23 @@
     {
         await using var context = await DbFactory.CreateDbContextAsync();
 
-        var order = await context.Orders
+        var orderFromDb = await context.Orders
             .Include(o => o.OrderItems)
             .FirstOrDefaultAsync(o => o.Order_Id == Order_Id);
 
-        if (order is null)
+        if (orderFromDb is null)
         {
-            NavigationManager.NavigateTo("/not-found");
+            NavigationManager.NavigateTo("notfound");
             return;
         }
 
-        if (order.Order_Status == "cancelled" ||
-            order.Order_Status == "done" ||
-            order.Order_Status == "shipped" ||
-            order.Order_Status == "delivered")
+        if (!CanCancelOrder(orderFromDb.Order_Status))
         {
             NavigationManager.NavigateTo("/orders");
             return;
         }
 
-        foreach (var orderItem in order.OrderItems)
+        foreach (var orderItem in orderFromDb.OrderItems)
         {
             var stock = await context.Stocks
                 .FirstOrDefaultAsync(s =>
@@ -135,8 +177,8 @@
             }
         }
 
-        order.Order_Status = "cancelled";
-        order.Order_StatusChangedAt = DateTime.Now;
+        orderFromDb.Order_Status = "cancelled";
+        orderFromDb.Order_StatusChangedAt = DateTime.Now;
 
         await context.SaveChangesAsync();
 

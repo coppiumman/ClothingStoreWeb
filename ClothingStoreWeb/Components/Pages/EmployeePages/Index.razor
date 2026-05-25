@@ -1,71 +1,268 @@
 @page "/employees"
 @attribute [Authorize(Roles = "Администратор")]
+@using System.Globalization
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using ClothingStoreWeb.Models
 @using ClothingStoreWeb.Data
 @using ClosedXML.Excel
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Identity
 @implements IAsyncDisposable
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject IJSRuntime JSRuntime
+@inject UserManager<ApplicationUser> UserManager
 
 <PageTitle>Сотрудники</PageTitle>
 
-<h1>Сотрудники</h1>
+<div class="employees-page">
+    <div class="employees-header">
+        <div>
+            <h1>Сотрудники</h1>
+            <p>
+                В разделе выполняется управление сотрудниками интернет-магазина. Администратор может
+                назначить зарегистрированного пользователя сотрудником, указать должность, зарплату
+                и дату приёма на работу.
+            </p>
+        </div>
 
-<div class="mb-3">
-    <button type="button"
-            class="btn btn-outline-success"
-            @onclick="ExportEmployeesToExcelAsync">
-        Экспорт в Excel
-    </button>
+        <div class="employees-header-actions">
+            <button type="button"
+                    class="employees-button employees-button-secondary"
+                    @onclick="ExportEmployeesToExcelAsync">
+                Экспорт в Excel
+            </button>
+
+            <a class="employees-button employees-button-primary"
+               href="/employees/create">
+                Добавить сотрудника
+            </a>
+        </div>
+    </div>
+
+    <div class="employees-filter-panel">
+        <label for="employee-search">Поиск сотрудника</label>
+
+        <div class="employees-search-row">
+            <input id="employee-search"
+                   type="search"
+                   class="employees-search-input"
+                   @bind="searchText"
+                   @bind:event="oninput"
+                   placeholder="Введите ФИО, email, должность или дату" />
+
+            @if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                <button type="button"
+                        class="employees-button"
+                        @onclick="ClearSearch">
+                    Очистить
+                </button>
+            }
+        </div>
+
+        <div class="employees-filter-hint">
+            Например: <strong>Менеджер</strong>, <strong>admin@admin.ru</strong> или <strong>24.05.2026</strong>.
+        </div>
+    </div>
+
+    <div class="employees-table-card">
+        <QuickGrid Class="employees-table" Items="FilteredEmployees">
+            <TemplateColumn Title="Пользователь" Context="employee">
+                <div class="employee-user-cell">
+                    <strong>@GetUserDisplayName(employee.User)</strong>
+                    <span>@(employee.User?.Email ?? "Email не указан")</span>
+                </div>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Должность" Context="employee">
+                <span class="employee-position @(employee.IsAdministrator ? "employee-position-admin" : "")">
+                    @employee.Position
+                </span>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Зарплата" Context="employee">
+                @if (employee.IsAdministrator && employee.EmployeeId is null)
+                {
+                    <span class="employee-muted">Не применяется</span>
+                }
+                else
+                {
+                    @($"{employee.Salary:N2} ₽")
+                }
+            </TemplateColumn>
+
+            <TemplateColumn Title="Дата приёма" Context="employee">
+                @if (employee.HireDate.HasValue)
+                {
+                    @employee.HireDate.Value.ToString("dd.MM.yyyy")
+                }
+                else
+                {
+                    <span class="employee-muted">Не применяется</span>
+                }
+            </TemplateColumn>
+
+            <TemplateColumn Title="Действия" Context="employee">
+                <div class="employees-actions">
+                    @if (employee.EmployeeId.HasValue)
+                    {
+                        @if (!employee.IsAdministrator)
+                        {
+                            <a class="employees-action-button"
+                               href="@($"/employees/edit?employee_id={employee.EmployeeId}")">
+                                Изменить
+                            </a>
+                        }
+
+                        <a class="employees-action-button"
+                           href="@($"/employees/details?employee_id={employee.EmployeeId}")">
+                            Подробнее
+                        </a>
+
+                        @if (!employee.IsAdministrator)
+                        {
+                            <a class="employees-action-button employees-action-danger"
+                               href="@($"/employees/delete?employee_id={employee.EmployeeId}")">
+                                Удалить
+                            </a>
+                        }
+                    }
+                    else
+                    {
+                        <span class="employees-action-muted">
+                            Защищённая роль
+                        </span>
+                    }
+                </div>
+            </TemplateColumn>
+        </QuickGrid>
+    </div>
 </div>
-
-<p>
-    <a href="employees/create">Добавить</a>
-</p>
-
-<QuickGrid Class="table" Items="employees">
-    <TemplateColumn Title="Пользователь">
-        @GetUserDisplayName(context.User)
-    </TemplateColumn>
-    <PropertyColumn Property="employee => employee.Employee_Position" Title="Должность" />
-    <PropertyColumn Property="employee => employee.Employee_Salary" Title="Зарплата" />
-    <PropertyColumn Property="employee => employee.Employee_HireDate" Title="Дата приёма на работу" />
-
-    <TemplateColumn Context="employee">
-        <a href="@($"employees/edit?employee_id={employee.Employee_Id}")">Изменить</a> |
-        <a href="@($"employees/details?employee_id={employee.Employee_Id}")">Подробнее</a> |
-        <a href="@($"employees/delete?employee_id={employee.Employee_Id}")">Удалить</a>
-    </TemplateColumn>
-</QuickGrid>
 
 @code {
     private ApplicationDbContext context = default!;
-    private IQueryable<Employee> employees = Enumerable.Empty<Employee>().AsQueryable();
+    private List<EmployeeRow> employees = new();
 
-    protected override void OnInitialized()
+    private const string AdministratorRoleName = "Администратор";
+
+    private string searchText = string.Empty;
+
+    private IQueryable<EmployeeRow> FilteredEmployees => GetFilteredEmployees();
+
+    protected override async Task OnInitializedAsync()
     {
         context = DbFactory.CreateDbContext();
-        employees = context.Employees
+
+        var employeeList = await context.Employees
             .Include(employee => employee.User)
             .AsNoTracking()
-            .OrderBy(employee => employee.Employee_Id);
+            .OrderBy(employee => employee.Employee_Position)
+            .ThenBy(employee => employee.User!.UserFullName)
+            .ThenBy(employee => employee.User!.Email)
+            .ToListAsync();
+
+        employees = employeeList
+            .Select(employee => new EmployeeRow
+            {
+                EmployeeId = employee.Employee_Id,
+                User = employee.User,
+                Position = employee.Employee_Position,
+                Salary = employee.Employee_Salary,
+                HireDate = employee.Employee_HireDate,
+                IsAdministrator = false
+            })
+            .ToList();
+
+        var administratorUsers = await UserManager.GetUsersInRoleAsync(AdministratorRoleName);
+
+        foreach (var administratorUser in administratorUsers)
+        {
+            var existingRow = employees.FirstOrDefault(row => row.User?.Id == administratorUser.Id);
+
+            if (existingRow is not null)
+            {
+                existingRow.IsAdministrator = true;
+                existingRow.Position = AdministratorRoleName;
+                continue;
+            }
+
+            employees.Add(new EmployeeRow
+            {
+                EmployeeId = null,
+                User = administratorUser,
+                Position = AdministratorRoleName,
+                Salary = 0,
+                HireDate = null,
+                IsAdministrator = true
+            });
+        }
+
+        employees = employees
+            .OrderByDescending(row => row.IsAdministrator)
+            .ThenBy(row => row.Position)
+            .ThenBy(row => GetUserDisplayName(row.User))
+            .ToList();
     }
 
     public async ValueTask DisposeAsync() => await context.DisposeAsync();
 
+    private IQueryable<EmployeeRow> GetFilteredEmployees()
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            return employees.AsQueryable();
+        }
+
+        var value = searchText.Trim();
+
+        DateTime? hireDate = null;
+
+        if (DateTime.TryParseExact(
+                value,
+                new[] { "dd.MM.yyyy", "d.M.yyyy", "yyyy-MM-dd" },
+                CultureInfo.GetCultureInfo("ru-RU"),
+                DateTimeStyles.None,
+                out var parsedDate))
+        {
+            hireDate = parsedDate.Date;
+        }
+
+        var filteredEmployees = employees
+            .Where(employee =>
+                employee.Position.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                GetUserDisplayName(employee.User).Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrWhiteSpace(employee.User?.Email) &&
+                    employee.User.Email.Contains(value, StringComparison.OrdinalIgnoreCase)) ||
+                (hireDate.HasValue &&
+                    employee.HireDate.HasValue &&
+                    employee.HireDate.Value.Date == hireDate.Value.Date)
+            );
+
+        return filteredEmployees.AsQueryable();
+    }
+
+    private void ClearSearch()
+    {
+        searchText = string.Empty;
+    }
+
     private static string GetUserDisplayName(ApplicationUser? user)
     {
         if (user is null)
-            return "";
+        {
+            return "Пользователь не найден";
+        }
 
         if (!string.IsNullOrWhiteSpace(user.UserFullName))
+        {
             return user.UserFullName;
+        }
 
         if (!string.IsNullOrWhiteSpace(user.Email))
+        {
             return user.Email;
+        }
 
         return user.Id;
     }
@@ -93,7 +290,9 @@
         var employeesForExport = await dbContext.Employees
             .Include(employee => employee.User)
             .AsNoTracking()
-            .OrderBy(employee => employee.Employee_Id)
+            .OrderBy(employee => employee.Employee_Position)
+            .ThenBy(employee => employee.User!.UserFullName)
+            .ThenBy(employee => employee.User!.Email)
             .ToListAsync();
 
         using var workbook = new XLWorkbook();
@@ -127,5 +326,20 @@
         worksheet.Columns().AdjustToContents();
 
         await DownloadExcelAsync(workbook, "employees.xlsx");
+    }
+
+    private sealed class EmployeeRow
+    {
+        public int? EmployeeId { get; set; }
+
+        public ApplicationUser? User { get; set; }
+
+        public string Position { get; set; } = "";
+
+        public decimal Salary { get; set; }
+
+        public DateTime? HireDate { get; set; }
+
+        public bool IsAdministrator { get; set; }
     }
 }

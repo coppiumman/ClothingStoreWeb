@@ -1,5 +1,6 @@
 @page "/store"
 @layout PublicLayout
+@implements IDisposable
 
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Data
@@ -31,48 +32,70 @@
                     </div>
 
                     <div class="store-hero-overlay">
-                        <p class="store-hero-label">@slide.Label</p>
+                        @if (!string.IsNullOrWhiteSpace(slide.Label))
+                        {
+                            <p class="store-hero-label">@slide.Label</p>
+                        }
+
                         <h1>@slide.Title</h1>
-                        <p>@slide.Description</p>
-                        <a class="store-hero-link" href="@slide.Link">Смотреть каталог</a>
+
+                        @if (!string.IsNullOrWhiteSpace(slide.Description))
+                        {
+                            <p>@slide.Description</p>
+                        }
+
+                        <a class="store-hero-link" href="@slide.Link">
+                            @slide.ButtonText
+                        </a>
                     </div>
                 </div>
             }
         </div>
 
-        <button type="button"
-                class="store-hero-arrow store-hero-arrow-left"
-                @onclick="PreviousSlide"
-                aria-label="Предыдущий слайд">
-            ‹
-        </button>
+        @if (heroSlides.Count > 1)
+        {
+            <button type="button"
+                    class="store-hero-arrow store-hero-arrow-left"
+                    @onclick="PreviousSlide"
+                    aria-label="Предыдущий слайд">
+                ‹
+            </button>
 
-        <button type="button"
-                class="store-hero-arrow store-hero-arrow-right"
-                @onclick="NextSlide"
-                aria-label="Следующий слайд">
-            ›
-        </button>
+            <button type="button"
+                    class="store-hero-arrow store-hero-arrow-right"
+                    @onclick="NextSlide"
+                    aria-label="Следующий слайд">
+                ›
+            </button>
 
-        <div class="store-hero-dots">
-            @for (var i = 0; i < heroSlides.Count; i++)
-            {
-                var slideIndex = i;
+            <div class="store-hero-dots">
+                @for (var i = 0; i < heroSlides.Count; i++)
+                {
+                    var slideIndex = i;
 
-                <button type="button"
-                        class="store-hero-dot @(slideIndex == currentSlideIndex ? "active" : "")"
-                        @onclick="() => SetSlide(slideIndex)"
-                        aria-label="@($"Слайд {slideIndex + 1}")">
-                </button>
-            }
+                    <button type="button"
+                            class="store-hero-dot @(slideIndex == currentSlideIndex ? "active" : "")"
+                            @onclick="() => SetSlide(slideIndex)"
+                            aria-label="@($"Слайд {slideIndex + 1}")">
+                    </button>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <div class="store-hero-empty">
+            <h1>Интернет-магазин одежды</h1>
+            <p>Подберите товары, просмотрите размеры и оформите заказ онлайн.</p>
+            <a class="store-hero-link" href="/catalog">Смотреть каталог</a>
         </div>
     }
 </section>
 
 <section class="store-products-section">
     <div class="store-section-header">
-        <h2>Новинки</h2>
-        <a href="/catalog">Смотреть всё</a>
+        <h2>@newProductsTitle</h2>
+        <a href="@newProductsLink">@newProductsLinkText</a>
     </div>
 
     @if (newProducts.Count > 0)
@@ -106,18 +129,32 @@
     }
 </section>
 
-<section class="store-category-poster">
-    <div class="store-category-poster-content">
-        <p>Коллекция</p>
-        <h2>Деним</h2>
-        <a href="/catalog">Перейти в каталог</a>
-    </div>
-</section>
+@if (posterBlock is not null)
+{
+    <section class="store-category-poster @(string.IsNullOrWhiteSpace(posterBlock.HomeBanner_ImagePath) ? "" : "has-image")"
+             style="@GetPosterBackgroundStyle()">
+        <div class="store-category-poster-content">
+            @if (!string.IsNullOrWhiteSpace(posterBlock.HomeBanner_Label))
+            {
+                <p>@posterBlock.HomeBanner_Label</p>
+            }
+
+            <h2>@posterBlock.HomeBanner_Title</h2>
+
+            @if (!string.IsNullOrWhiteSpace(posterBlock.HomeBanner_ButtonText))
+            {
+                <a href="@GetSafeLink(posterBlock.HomeBanner_ButtonUrl)">
+                    @posterBlock.HomeBanner_ButtonText
+                </a>
+            }
+        </div>
+    </section>
+}
 
 <section class="store-products-section">
     <div class="store-section-header">
-        <h2>Хиты</h2>
-        <a href="/catalog">В каталог</a>
+        <h2>@hitProductsTitle</h2>
+        <a href="@hitProductsLink">@hitProductsLinkText</a>
     </div>
 
     @if (hitProducts.Count > 0)
@@ -156,8 +193,17 @@
     private readonly List<Product> newProducts = new();
     private readonly List<Product> hitProducts = new();
 
+    private HomeBanner? posterBlock;
+
+    private string newProductsTitle = "Новинки";
+    private string newProductsLinkText = "Смотреть всё";
+    private string newProductsLink = "/catalog";
+
+    private string hitProductsTitle = "Хиты";
+    private string hitProductsLinkText = "В каталог";
+    private string hitProductsLink = "/catalog";
+
     private int currentSlideIndex;
-    private int previousSlideIndex;
     private string slideDirectionClass = "slide-next";
 
     private PeriodicTimer? heroTimer;
@@ -165,52 +211,228 @@
 
     protected override async Task OnInitializedAsync()
     {
-        using var context = DbFactory.CreateDbContext();
+        await using var context = await DbFactory.CreateDbContextAsync();
 
-        var products = await context.Products
+        var homeBlocks = await context.HomeBanners
+            .AsNoTracking()
+            .Where(block => !block.HomeBanner_IsHidden)
+            .OrderBy(block => block.HomeBanner_DisplayOrder)
+            .ThenBy(block => block.HomeBanner_Id)
+            .ToListAsync();
+
+        var heroBlocks = homeBlocks
+            .Where(block => block.HomeBanner_Type == "Hero")
+            .Take(3)
+            .ToList();
+
+        foreach (var block in heroBlocks)
+        {
+            heroSlides.Add(new HeroSlide
+            {
+                Label = block.HomeBanner_Label ?? string.Empty,
+                Title = block.HomeBanner_Title,
+                Description = block.HomeBanner_Description ?? string.Empty,
+                ImagePath = block.HomeBanner_ImagePath,
+                Link = GetSafeLink(block.HomeBanner_ButtonUrl),
+                ButtonText = string.IsNullOrWhiteSpace(block.HomeBanner_ButtonText)
+                    ? "Смотреть каталог"
+                    : block.HomeBanner_ButtonText
+            });
+        }
+
+        posterBlock = homeBlocks
+            .FirstOrDefault(block => block.HomeBanner_Type == "Poster");
+
+        var newProductBlocks = homeBlocks
+            .Where(block => block.HomeBanner_Type == "NewProducts")
+            .Take(4)
+            .ToList();
+
+        var hitProductBlocks = homeBlocks
+            .Where(block => block.HomeBanner_Type == "HitProducts")
+            .Take(4)
+            .ToList();
+
+        var newProductsHeaderBlock = GetSectionHeaderBlock(newProductBlocks);
+        var hitProductsHeaderBlock = GetSectionHeaderBlock(hitProductBlocks);
+
+        ApplySectionHeader(
+            newProductsHeaderBlock,
+            defaultTitle: "Новинки",
+            defaultLinkText: "Смотреть всё",
+            ref newProductsTitle,
+            ref newProductsLinkText,
+            ref newProductsLink);
+
+        ApplySectionHeader(
+            hitProductsHeaderBlock,
+            defaultTitle: "Хиты",
+            defaultLinkText: "В каталог",
+            ref hitProductsTitle,
+            ref hitProductsLinkText,
+            ref hitProductsLink);
+
+        var latestProducts = await context.Products
             .AsNoTracking()
             .Where(product => !product.Product_IsHidden)
             .OrderByDescending(product => product.Product_Id)
             .Take(20)
             .ToListAsync();
 
-        newProducts.AddRange(products.Take(4));
+        var popularProducts = await context.Products
+            .AsNoTracking()
+            .Where(product => !product.Product_IsHidden)
+            .OrderByDescending(product => product.OrderItems.Sum(orderItem => orderItem.OrderItem_Quantity))
+            .ThenByDescending(product => product.Product_Id)
+            .Take(20)
+            .ToListAsync();
+
+        newProducts.AddRange(
+            await BuildProductSectionAsync(
+                context,
+                newProductBlocks,
+                latestProducts,
+                maxCount: 4));
 
         hitProducts.AddRange(
-            products
-                .OrderBy(product => Guid.NewGuid())
-                .Take(4));
-
-        var heroProducts = products
-            .Where(product => !string.IsNullOrWhiteSpace(product.Product_ImagePath))
-            .Take(3)
-            .ToList();
-
-        foreach (var product in heroProducts)
-        {
-            heroSlides.Add(new HeroSlide
-            {
-                Label = "Новая коллекция",
-                Title = product.Product_Name,
-                Description = "Откройте актуальные товары интернет-магазина одежды.",
-                ImagePath = product.Product_ImagePath,
-                Link = $"/catalog/product/{product.Product_Id}"
-            });
-        }
-
-        while (heroSlides.Count < 3)
-        {
-            heroSlides.Add(new HeroSlide
-            {
-                Label = "Каталог",
-                Title = "Интернет-магазин одежды",
-                Description = "Подберите товары, просмотрите размеры и оформите заказ онлайн.",
-                ImagePath = null,
-                Link = "/catalog"
-            });
-        }
+            await BuildProductSectionAsync(
+                context,
+                hitProductBlocks,
+                popularProducts,
+                maxCount: 4));
 
         StartHeroTimer();
+    }
+
+    private static HomeBanner? GetSectionHeaderBlock(List<HomeBanner> blocks)
+    {
+        return blocks.FirstOrDefault(block =>
+                   !TryGetProductIdFromUrl(block.HomeBanner_ButtonUrl, out _))
+               ?? blocks.FirstOrDefault();
+    }
+
+    private static void ApplySectionHeader(
+        HomeBanner? block,
+        string defaultTitle,
+        string defaultLinkText,
+        ref string title,
+        ref string linkText,
+        ref string link)
+    {
+        if (block is null)
+        {
+            title = defaultTitle;
+            linkText = defaultLinkText;
+            link = "/catalog";
+            return;
+        }
+
+        title = string.IsNullOrWhiteSpace(block.HomeBanner_Title)
+            ? defaultTitle
+            : block.HomeBanner_Title;
+
+        linkText = string.IsNullOrWhiteSpace(block.HomeBanner_ButtonText)
+            ? defaultLinkText
+            : block.HomeBanner_ButtonText;
+
+        link = GetSafeLink(block.HomeBanner_ButtonUrl);
+    }
+
+    private static async Task<List<Product>> BuildProductSectionAsync(
+        ApplicationDbContext context,
+        List<HomeBanner> sectionBlocks,
+        List<Product> fallbackProducts,
+        int maxCount)
+    {
+        var result = new List<Product>();
+
+        var selectedProductIds = sectionBlocks
+            .Select(block => TryGetProductIdFromUrl(block.HomeBanner_ButtonUrl, out var productId)
+                ? productId
+                : 0)
+            .Where(productId => productId > 0)
+            .Distinct()
+            .ToList();
+
+        if (selectedProductIds.Count > 0)
+        {
+            var selectedProducts = await context.Products
+                .AsNoTracking()
+                .Where(product =>
+                    !product.Product_IsHidden &&
+                    selectedProductIds.Contains(product.Product_Id))
+                .ToDictionaryAsync(
+                    product => product.Product_Id,
+                    product => product);
+
+            foreach (var productId in selectedProductIds)
+            {
+                if (selectedProducts.TryGetValue(productId, out var product))
+                {
+                    result.Add(product);
+                }
+
+                if (result.Count >= maxCount)
+                {
+                    return result;
+                }
+            }
+        }
+
+        foreach (var product in fallbackProducts)
+        {
+            if (result.Any(item => item.Product_Id == product.Product_Id))
+            {
+                continue;
+            }
+
+            result.Add(product);
+
+            if (result.Count >= maxCount)
+            {
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    private static bool TryGetProductIdFromUrl(string? url, out int productId)
+    {
+        productId = 0;
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return false;
+        }
+
+        const string productUrlPrefix = "/catalog/product/";
+
+        if (!url.StartsWith(productUrlPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var idText = url[productUrlPrefix.Length..];
+
+        return int.TryParse(idText, out productId);
+    }
+
+    private static string GetSafeLink(string? url)
+    {
+        return string.IsNullOrWhiteSpace(url)
+            ? "/catalog"
+            : url;
+    }
+
+    private string GetPosterBackgroundStyle()
+    {
+        if (posterBlock is null || string.IsNullOrWhiteSpace(posterBlock.HomeBanner_ImagePath))
+        {
+            return string.Empty;
+        }
+
+        return $"background-image: linear-gradient(rgba(255,255,255,0.35), rgba(255,255,255,0.35)), url('{posterBlock.HomeBanner_ImagePath}');";
     }
 
     private void StartHeroTimer()
@@ -274,9 +496,7 @@
             return;
         }
 
-        previousSlideIndex = currentSlideIndex;
         slideDirectionClass = "slide-prev";
-
         currentSlideIndex--;
 
         if (currentSlideIndex < 0)
@@ -297,9 +517,7 @@
             return;
         }
 
-        previousSlideIndex = currentSlideIndex;
         slideDirectionClass = "slide-next";
-
         currentSlideIndex++;
 
         if (currentSlideIndex >= heroSlides.Count)
@@ -315,13 +533,17 @@
 
     private void SetSlide(int slideIndex)
     {
-        if (slideIndex < 0 || slideIndex >= heroSlides.Count || slideIndex == currentSlideIndex)
+        if (slideIndex < 0 ||
+            slideIndex >= heroSlides.Count ||
+            slideIndex == currentSlideIndex)
         {
             return;
         }
 
-        previousSlideIndex = currentSlideIndex;
-        slideDirectionClass = slideIndex > currentSlideIndex ? "slide-next" : "slide-prev";
+        slideDirectionClass = slideIndex > currentSlideIndex
+            ? "slide-next"
+            : "slide-prev";
+
         currentSlideIndex = slideIndex;
 
         StartHeroTimer();
@@ -339,5 +561,6 @@
         public string Description { get; set; } = string.Empty;
         public string? ImagePath { get; set; }
         public string Link { get; set; } = "/catalog";
+        public string ButtonText { get; set; } = "Смотреть каталог";
     }
 }

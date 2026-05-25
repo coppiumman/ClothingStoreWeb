@@ -3,47 +3,53 @@
 @using Microsoft.EntityFrameworkCore
 @using ClothingStoreWeb.Data
 @using ClothingStoreWeb.Models
+@using Microsoft.AspNetCore.Identity
 @inject IDbContextFactory<ClothingStoreWeb.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavigationManager
+@inject UserManager<ApplicationUser> UserManager
 
-<PageTitle>Редактирование</PageTitle>
+<PageTitle>Редактирование сотрудника</PageTitle>
 
-<h1>Редактирование</h1>
+<div class="employee-form-page">
+    <div class="employee-form-header">
+        <h1>Редактирование сотрудника</h1>
+        <p>
+            Измените должность, зарплату и дату приёма сотрудника. Привязанный пользователь
+            не изменяется, чтобы не нарушить связь с учётной записью.
+        </p>
+    </div>
 
-<h2>Сотрудник</h2>
-<hr />
-
-@if (Employee is null)
-{
-    <p><em>Загрузка...</em></p>
-}
-else
-{
-    <div class="row">
-        <div class="col-md-4">
+    @if (Employee is null)
+    {
+        <p><em>Загрузка...</em></p>
+    }
+    else
+    {
+        <div class="employee-form-card">
             <EditForm method="post" Model="Employee" OnValidSubmit="UpdateEmployee" FormName="edit" Enhance>
                 <DataAnnotationsValidator />
-                <ValidationSummary role="alert" />
+                <ValidationSummary role="alert" class="text-danger" />
 
                 <input type="hidden" name="Employee.Employee_Id" value="@Employee.Employee_Id" />
 
-                <div class="mb-3">
-                    <label class="form-label">Пользователь:</label>
-                    <input class="form-control employee-user-readonly"
+                <div class="employee-form-group">
+                    <label>Пользователь</label>
+
+                    <input class="employee-form-control employee-user-readonly"
                            value="@GetSelectedUserName()"
                            readonly />
 
-                    <div class="form-text">
+                    <div class="employee-form-note">
                         Пользователь уже привязан к записи сотрудника и не изменяется при редактировании.
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="employee_position" class="form-label">Должность:</label>
+                <div class="employee-form-group">
+                    <label for="employee_position">Должность <span>*</span></label>
+
                     <InputSelect id="employee_position"
                                  @bind-Value="Employee.Employee_Position"
-                                 class="form-control"
+                                 class="employee-form-control"
                                  aria-required="true">
                         <option value="">Выберите должность</option>
                         @foreach (var position in EmployeePositions)
@@ -51,39 +57,46 @@ else
                             <option value="@position">@position</option>
                         }
                     </InputSelect>
+
                     <ValidationMessage For="() => Employee.Employee_Position" class="text-danger" />
                 </div>
 
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="employee_salary" class="form-label">Зарплата:</label>
+                <div class="employee-form-group">
+                    <label for="employee_salary">Зарплата <span>*</span></label>
+
                     <InputNumber id="employee_salary"
                                  @bind-Value="Employee.Employee_Salary"
-                                 class="form-control"
+                                 class="employee-form-control"
                                  aria-required="true"
                                  ParsingErrorMessage="Введите корректную зарплату" />
+
                     <ValidationMessage For="() => Employee.Employee_Salary" class="text-danger" />
                 </div>
 
-                <div class="mb-3">
-                    <span class="text-danger">*</span>
-                    <label for="employee_hiredate" class="form-label">Дата приёма на работу:</label>
+                <div class="employee-form-group">
+                    <label for="employee_hiredate">Дата приёма на работу <span>*</span></label>
+
                     <InputDate id="employee_hiredate"
                                @bind-Value="Employee.Employee_HireDate"
-                               class="form-control"
+                               class="employee-form-control"
                                aria-required="true"
                                ParsingErrorMessage="Введите корректную дату приёма на работу" />
+
                     <ValidationMessage For="() => Employee.Employee_HireDate" class="text-danger" />
                 </div>
 
-                <button type="submit" class="btn btn-primary">Сохранить</button>
+                <div class="employee-form-actions">
+                    <button type="submit" class="employee-button employee-button-primary">
+                        Сохранить изменения
+                    </button>
+
+                    <a class="employee-button" href="/employees">
+                        Отмена
+                    </a>
+                </div>
             </EditForm>
         </div>
-    </div>
-}
-
-<div>
-    <a href="/employees">Вернуться к списку</a>
+    }
 </div>
 
 @code {
@@ -95,9 +108,10 @@ else
 
     private List<ApplicationUser> Users { get; set; } = new();
 
+    private const string AdministratorRoleName = "Администратор";
+
     private static readonly string[] EmployeePositions =
     {
-        "Администратор",
         "Менеджер",
         "Кладовщик",
         "Консультант"
@@ -119,6 +133,16 @@ else
         if (Employee is null)
         {
             NavigationManager.NavigateTo("notfound");
+            return;
+        }
+
+        var selectedUser = Users.FirstOrDefault(user => user.Id == Employee.User_Id);
+
+        if (selectedUser is not null &&
+            await UserManager.IsInRoleAsync(selectedUser, AdministratorRoleName))
+        {
+            NavigationManager.NavigateTo("/employees", replace: true);
+            return;
         }
     }
 

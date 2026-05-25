@@ -19,7 +19,7 @@ namespace ClothingStoreWeb.Models
         public string Product_Name { get; set; } = string.Empty;
 
         [Display(Name = "Описание товара")]
-        [StringLength(500, ErrorMessage = "Описание товара не должно превышать 500 символов")]
+        [StringLength(1000, ErrorMessage = "Описание товара не должно превышать 1000 символов")]
         public string? Product_Description { get; set; }
 
         [Display(Name = "Цена")]
